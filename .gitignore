@@ -1,0 +1,31 @@
+# .NET
+bin/
+obj/
+*.user
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Env / secrets
+.env
+*.env.local
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Claude Code local (machine-specific) settings
+.claude/settings.local.json
+
+# Logs / temp
+*.log
+run*.out.txt
+run*.err.txt
+vite.out.txt
+vite.err.txt

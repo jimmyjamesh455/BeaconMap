@@ -1,0 +1,6 @@
+@BeaconMap.Api_HostAddress = http://localhost:5118
+
+GET {{BeaconMap.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
