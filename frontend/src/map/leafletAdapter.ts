@@ -1,7 +1,17 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { CoordinationPoint, Hazard, LatLng } from '../api/types'
 import type { MapAdapter } from './MapAdapter'
+
+// Leaflet's default marker icon URLs don't survive bundling; point them at the bundled assets.
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+})
 
 const HAZARD_COLOURS: Record<string, string> = {
   BlockedRoad: '#b45309',
@@ -18,6 +28,13 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19,
   }).addTo(map)
+
+  // The map is created inside a flex container that may not have its final size yet;
+  // recompute Leaflet's dimensions once laid out and whenever the container resizes,
+  // otherwise tiles render blank until the next interaction.
+  const resizeObserver = new ResizeObserver(() => map.invalidateSize())
+  resizeObserver.observe(element)
+  requestAnimationFrame(() => map.invalidateSize())
 
   const areaLayer = L.layerGroup().addTo(map)
   const hazardLayer = L.layerGroup().addTo(map)
@@ -75,6 +92,7 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       routeLayer.clearLayers()
     },
     destroy() {
+      resizeObserver.disconnect()
       map.remove()
     },
   }

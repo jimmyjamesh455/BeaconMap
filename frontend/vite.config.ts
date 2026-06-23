@@ -7,5 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Unit tests only; Playwright owns the e2e/ specs.
+    include: ['src/**/*.test.ts'],
   },
 })

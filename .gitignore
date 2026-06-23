@@ -11,6 +11,11 @@ node_modules/
 dist/
 *.local
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
 # Env / secrets
 .env
 *.env.local

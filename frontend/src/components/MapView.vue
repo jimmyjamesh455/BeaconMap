@@ -11,10 +11,14 @@ import { useRouteStore } from '../stores/route'
 
 const props = withDefaults(
   defineProps<{ adapterFactory?: MapAdapterFactory; draftArea?: LatLng[] }>(),
-  { adapterFactory: () => createLeafletAdapter, draftArea: () => [] },
+  { draftArea: () => [] },
 )
 
 const emit = defineEmits<{ 'map-click': [LatLng] }>()
+
+// Vue uses a function-typed prop default as-is (it won't call it), so resolve the factory
+// here rather than via withDefaults — otherwise the default would be a factory-of-factory.
+const makeAdapter: MapAdapterFactory = props.adapterFactory ?? createLeafletAdapter
 
 const el = ref<HTMLDivElement>()
 let adapter: MapAdapter | null = null
@@ -30,7 +34,7 @@ function redrawArea() {
 }
 
 onMounted(() => {
-  adapter = props.adapterFactory(el.value!)
+  adapter = makeAdapter(el.value!)
   adapter.onClick((point) => emit('map-click', point))
   redrawArea()
   adapter.drawHazards(hazards.value)
