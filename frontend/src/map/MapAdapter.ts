@@ -1,4 +1,4 @@
-import type { CoordinationPoint, Hazard, LatLng } from '../api/types'
+import type { CoordinationPoint, Hazard, LatLng, Route } from '../api/types'
 
 /**
  * A thin abstraction over the map library so component logic (store -> map sync, click
@@ -10,7 +10,7 @@ export interface MapAdapter {
   drawArea(ring: LatLng[]): void
   drawHazards(hazards: Hazard[]): void
   drawCoordinationPoints(points: CoordinationPoint[]): void
-  drawRoute(points: LatLng[]): void
+  drawRoute(route: Route | null): void
   clearRoute(): void
   destroy(): void
 }

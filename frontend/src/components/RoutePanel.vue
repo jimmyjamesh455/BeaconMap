@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Route } from '../api/types'
+import { formatRouteSummary } from '../format'
 
 const props = defineProps<{
   route: Route | null
@@ -12,10 +13,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ setStart: []; setEnd: []; clear: [] }>()
 
-const distanceKm = computed(() =>
-  props.route ? (props.route.distanceMeters / 1000).toFixed(2) : null)
-const durationMin = computed(() =>
-  props.route ? Math.round(props.route.durationSeconds / 60) : null)
+const summary = computed(() =>
+  props.route ? formatRouteSummary(props.route.distanceMeters, props.route.durationSeconds) : null)
 </script>
 
 <template>
@@ -31,7 +30,7 @@ const durationMin = computed(() =>
       <button @click="emit('clear')">Clear</button>
     </div>
     <p v-if="route" class="route-summary" data-test="route-summary">
-      {{ distanceKm }} km · {{ durationMin }} min — avoids all recorded hazards
+      {{ summary }} — avoids all recorded hazards
     </p>
     <p v-if="error" class="error" data-test="route-error">{{ error }}</p>
     <p v-if="!route && !error" class="hint">

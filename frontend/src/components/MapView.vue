@@ -39,12 +39,12 @@ onMounted(() => {
   redrawArea()
   adapter.drawHazards(hazards.value)
   adapter.drawCoordinationPoints(points.value)
-  adapter.drawRoute(route.value?.coordinates ?? [])
+  adapter.drawRoute(route.value)
 })
 
 watch(hazards, (value) => adapter?.drawHazards(value), { deep: true })
 watch(points, (value) => adapter?.drawCoordinationPoints(value), { deep: true })
-watch(route, (value) => adapter?.drawRoute(value?.coordinates ?? []))
+watch(route, (value) => adapter?.drawRoute(value))
 watch(() => props.draftArea, redrawArea, { deep: true })
 watch(active, (value) => {
   redrawArea()

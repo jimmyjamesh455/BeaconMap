@@ -3,8 +3,9 @@ import 'leaflet/dist/leaflet.css'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import type { CoordinationPoint, Hazard, LatLng } from '../api/types'
+import type { CoordinationPoint, Hazard, Route } from '../api/types'
 import type { MapAdapter } from './MapAdapter'
+import { formatRouteSummary } from '../format'
 
 // Leaflet's default marker icon URLs don't survive bundling; point them at the bundled assets.
 L.Icon.Default.mergeOptions({
@@ -79,14 +80,20 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
           .addTo(pointLayer)
       }
     },
-    drawRoute(points: LatLng[]) {
+    drawRoute(route: Route | null) {
       routeLayer.clearLayers()
-      if (points.length === 0) return
-      L.polyline(points.map((p) => [p.lat, p.lng] as [number, number]), {
+      if (!route || route.coordinates.length === 0) return
+      L.polyline(route.coordinates.map((p) => [p.lat, p.lng] as [number, number]), {
         color: '#059669',
         weight: 5,
         opacity: 0.85,
-      }).addTo(routeLayer)
+        className: 'route-line',
+      })
+        // Sticky tooltip follows the cursor while hovering the route line.
+        .bindTooltip(formatRouteSummary(route.distanceMeters, route.durationSeconds), {
+          sticky: true,
+        })
+        .addTo(routeLayer)
     },
     clearRoute() {
       routeLayer.clearLayers()
