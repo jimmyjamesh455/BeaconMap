@@ -7,6 +7,8 @@ export type DisasterType =
   | 'Storm'
   | 'Industrial'
   | 'Other'
+  | 'Eruption'
+  | 'Tsunami'
 
 export type HazardType =
   | 'BlockedRoad'

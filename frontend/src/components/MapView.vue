@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { MapAdapter, MapAdapterFactory } from '../map/MapAdapter'
+import type { MapAdapter, MapAdapterFactory, MapClick } from '../map/MapAdapter'
 import { createLeafletAdapter } from '../map/leafletAdapter'
 import type { LatLng } from '../api/types'
 import { useDisastersStore } from '../stores/disasters'
@@ -14,7 +14,7 @@ const props = withDefaults(
   { draftArea: () => [] },
 )
 
-const emit = defineEmits<{ 'map-click': [LatLng] }>()
+const emit = defineEmits<{ 'map-click': [MapClick] }>()
 
 // Vue uses a function-typed prop default as-is (it won't call it), so resolve the factory
 // here rather than via withDefaults — otherwise the default would be a factory-of-factory.
@@ -23,33 +23,30 @@ const makeAdapter: MapAdapterFactory = props.adapterFactory ?? createLeafletAdap
 const el = ref<HTMLDivElement>()
 let adapter: MapAdapter | null = null
 
-const { active } = storeToRefs(useDisastersStore())
+const { disasters, active, activeId } = storeToRefs(useDisastersStore())
 const { hazards } = storeToRefs(useHazardsStore())
 const { points } = storeToRefs(useCoordinationPointsStore())
 const { route } = storeToRefs(useRouteStore())
 
-function redrawArea() {
-  if (!adapter) return
-  adapter.drawArea(props.draftArea.length ? props.draftArea : active.value?.area ?? [])
-}
-
 onMounted(() => {
   adapter = makeAdapter(el.value!)
-  adapter.onClick((point) => emit('map-click', point))
-  redrawArea()
+  adapter.onClick((click) => emit('map-click', click))
+  adapter.drawDisasters(disasters.value, activeId.value)
+  adapter.drawDraftArea(props.draftArea)
   adapter.drawHazards(hazards.value)
   adapter.drawCoordinationPoints(points.value)
   adapter.drawRoute(route.value)
 })
 
+watch(disasters, (value) => adapter?.drawDisasters(value, activeId.value), { deep: true })
+watch(activeId, (value) => {
+  adapter?.drawDisasters(disasters.value, value)
+  if (active.value) adapter?.fitTo(active.value.area)
+})
+watch(() => props.draftArea, (value) => adapter?.drawDraftArea(value), { deep: true })
 watch(hazards, (value) => adapter?.drawHazards(value), { deep: true })
 watch(points, (value) => adapter?.drawCoordinationPoints(value), { deep: true })
 watch(route, (value) => adapter?.drawRoute(value))
-watch(() => props.draftArea, redrawArea, { deep: true })
-watch(active, (value) => {
-  redrawArea()
-  if (value) adapter?.fitTo(value.area)
-})
 
 onBeforeUnmount(() => adapter?.destroy())
 </script>

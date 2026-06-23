@@ -45,7 +45,7 @@ test('computes a route, draws it, and shows distance + drive time on hover', asy
   const map = page.locator('.leaflet-container')
   await page.getByRole('button', { name: 'Set start' }).click()
   await map.click({ position: { x: 250, y: 200 } })
-  await page.getByRole('button', { name: 'Set end' }).click()
+  // Setting the start auto-advances to setting the end, so the next click is the end point.
   await map.click({ position: { x: 360, y: 260 } })
 
   // The route polyline is drawn.
@@ -63,7 +63,7 @@ test('computes a route, draws it, and shows distance + drive time on hover', asy
   await page.mouse.move(point.x, point.y)
   await page.mouse.move(point.x + 1, point.y + 1)
 
-  const tooltip = page.locator('.leaflet-tooltip')
+  const tooltip = page.locator('.leaflet-tooltip.route-tooltip')
   await expect(tooltip).toBeVisible()
   await expect(tooltip).toContainText('km')
   await expect(tooltip).toContainText('min')

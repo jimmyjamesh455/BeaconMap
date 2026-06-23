@@ -8,6 +8,9 @@ public enum DisasterType
     Storm,
     Industrial,
     Other,
+    // Appended (kept last) so existing stored enum ordinals stay stable.
+    Eruption,
+    Tsunami,
 }
 
 public enum HazardType

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { CreateCoordinationPoint, CreateDisaster, CreateHazard, LatLng } from './api/types'
+import type { MapClick } from './map/MapAdapter'
 import { useDisastersStore } from './stores/disasters'
 import { useHazardsStore } from './stores/hazards'
 import { useCoordinationPointsStore } from './stores/coordinationPoints'
@@ -30,6 +31,7 @@ const pendingLocation = ref<LatLng | null>(null)
 const draftArea = ref<LatLng[]>([])
 const routeStart = ref<LatLng | null>(null)
 const routeEnd = ref<LatLng | null>(null)
+const contextMenu = ref<MapClick | null>(null)
 
 const hasActive = computed(() => active.value !== null)
 
@@ -70,6 +72,7 @@ function resetTransient() {
   draftArea.value = []
   routeStart.value = null
   routeEnd.value = null
+  contextMenu.value = null
 }
 
 function startNewDisaster() {
@@ -80,9 +83,11 @@ function startNewDisaster() {
 function setMode(next: Mode) {
   mode.value = mode.value === next ? null : next
   pendingLocation.value = null
+  contextMenu.value = null
 }
 
-function onMapClick(point: LatLng) {
+function onMapClick(click: MapClick) {
+  const point: LatLng = { lat: click.lat, lng: click.lng }
   switch (mode.value) {
     case 'new-disaster':
       draftArea.value = [...draftArea.value, point]
@@ -93,13 +98,41 @@ function onMapClick(point: LatLng) {
       break
     case 'route-start':
       routeStart.value = point
-      void tryRoute()
+      mode.value = 'route-end' // auto-advance to setting the end point
       break
     case 'route-end':
       routeEnd.value = point
+      mode.value = null
       void tryRoute()
       break
+    default:
+      // No active placing mode: offer a quick "add" menu at the clicked spot.
+      if (hasActive.value) contextMenu.value = click
   }
+}
+
+function menuLocation(): LatLng {
+  return { lat: contextMenu.value!.lat, lng: contextMenu.value!.lng }
+}
+
+function addHazardHere() {
+  pendingLocation.value = menuLocation()
+  mode.value = 'hazard'
+  contextMenu.value = null
+}
+
+function addPointHere() {
+  pendingLocation.value = menuLocation()
+  mode.value = 'point'
+  contextMenu.value = null
+}
+
+function startRouteHere() {
+  routeStart.value = menuLocation()
+  routeEnd.value = null
+  route.clear()
+  mode.value = 'route-end' // next map click sets the end point
+  contextMenu.value = null
 }
 
 async function tryRoute() {
@@ -190,6 +223,18 @@ function clearRoute() {
 
     <main class="map-pane">
       <MapView :draft-area="draftArea" @map-click="onMapClick" />
+
+      <div
+        v-if="contextMenu"
+        class="context-menu"
+        :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+        data-test="map-context-menu"
+      >
+        <button data-test="menu-add-hazard" @click="addHazardHere">Add hazard</button>
+        <button data-test="menu-add-point" @click="addPointHere">Add coordination point</button>
+        <button data-test="menu-start-route" @click="startRouteHere">Start route here</button>
+        <button class="menu-cancel" @click="contextMenu = null">Cancel</button>
+      </div>
     </main>
   </div>
 </template>
@@ -222,6 +267,39 @@ input, select { width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px; 
 .coords, .hint, .counts, .mode-hint { font-size: 0.8rem; color: #94a3b8; }
 .route-summary { color: #34d399; font-size: 0.85rem; }
 .error { color: #f87171; font-size: 0.85rem; }
+
+.context-menu {
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.context-menu button {
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  padding: 10px 12px;
+}
+.context-menu button:hover { background: #2563eb; }
+.context-menu .menu-cancel { color: #94a3b8; border-top: 1px solid #334155; }
+.context-menu .menu-cancel:hover { background: #334155; }
+
+/* Permanent disaster labels on the map. */
+.leaflet-tooltip.disaster-label {
+  background: rgba(15, 23, 42, 0.8);
+  color: #e2e8f0;
+  border: none;
+  box-shadow: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.leaflet-tooltip.disaster-label::before { display: none; }
 
 @media (max-width: 720px) {
   .app { flex-direction: column; }

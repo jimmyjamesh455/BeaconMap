@@ -5,7 +5,9 @@ import type { CreateDisaster, DisasterType, LatLng } from '../api/types'
 const props = defineProps<{ area: LatLng[] }>()
 const emit = defineEmits<{ submit: [CreateDisaster]; cancel: [] }>()
 
-const disasterTypes: DisasterType[] = ['Earthquake', 'Flood', 'Wildfire', 'Storm', 'Industrial', 'Other']
+const disasterTypes: DisasterType[] = [
+  'Earthquake', 'Flood', 'Wildfire', 'Storm', 'Industrial', 'Eruption', 'Tsunami', 'Other',
+]
 
 const name = ref<string>('')
 const type = ref<DisasterType>('Earthquake')

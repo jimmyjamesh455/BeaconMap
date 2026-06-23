@@ -34,6 +34,22 @@ public class DisasterEndpointsTests
         Assert.Equal(DisasterType.Earthquake, created.Type);
     }
 
+    [Theory]
+    [InlineData(DisasterType.Eruption)]
+    [InlineData(DisasterType.Tsunami)]
+    public async Task Post_disaster_accepts_new_types(DisasterType type)
+    {
+        using var factory = new TestApiFactory();
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/disasters", ValidRequest() with { Type = type }, TestApiFactory.Json);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<DisasterDto>(TestApiFactory.Json);
+        Assert.Equal(type, created!.Type);
+    }
+
     [Fact]
     public async Task Post_disaster_with_empty_area_returns_400()
     {

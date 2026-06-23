@@ -4,24 +4,24 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import HazardForm from './HazardForm.vue'
 import MapView from './MapView.vue'
-import type { MapAdapter } from '../map/MapAdapter'
-import type { Hazard, LatLng } from '../api/types'
+import type { MapAdapter, MapClick } from '../map/MapAdapter'
+import type { Hazard } from '../api/types'
 import { useHazardsStore } from '../stores/hazards'
 
 function hazard(id: string): Hazard {
   return { id, disasterId: 'd1', type: 'Fire', lat: 1, lng: 2, radiusMeters: 100, description: null, createdAtUtc: '' }
 }
 
-function fakeAdapter(): MapAdapter & { clickHandler: ((p: LatLng) => void) | null } {
+function fakeAdapter(): MapAdapter & { clickHandler: ((c: MapClick) => void) | null } {
   const fake = {
-    clickHandler: null as ((p: LatLng) => void) | null,
-    onClick(handler: (p: LatLng) => void) { fake.clickHandler = handler },
+    clickHandler: null as ((c: MapClick) => void) | null,
+    onClick(handler: (c: MapClick) => void) { fake.clickHandler = handler },
     fitTo: vi.fn(),
-    drawArea: vi.fn(),
+    drawDisasters: vi.fn(),
+    drawDraftArea: vi.fn(),
     drawHazards: vi.fn(),
     drawCoordinationPoints: vi.fn(),
     drawRoute: vi.fn(),
-    clearRoute: vi.fn(),
     destroy: vi.fn(),
   }
   return fake
@@ -70,8 +70,8 @@ describe('MapView', () => {
     const fake = fakeAdapter()
     const wrapper = mount(MapView, { props: { adapterFactory: () => fake } })
 
-    fake.clickHandler!({ lat: 10, lng: 20 })
+    fake.clickHandler!({ lat: 10, lng: 20, x: 100, y: 200 })
 
-    expect(wrapper.emitted('map-click')?.[0][0]).toEqual({ lat: 10, lng: 20 })
+    expect(wrapper.emitted('map-click')?.[0][0]).toEqual({ lat: 10, lng: 20, x: 100, y: 200 })
   })
 })
