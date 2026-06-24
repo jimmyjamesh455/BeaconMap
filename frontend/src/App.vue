@@ -7,6 +7,7 @@ import { useDisastersStore } from './stores/disasters'
 import { useHazardsStore } from './stores/hazards'
 import { useCoordinationPointsStore } from './stores/coordinationPoints'
 import { useRouteStore } from './stores/route'
+import { useNotificationsStore } from './stores/notifications'
 import { createMapHub } from './realtime/mapHub'
 import DisasterPicker from './components/DisasterPicker.vue'
 import DisasterForm from './components/DisasterForm.vue'
@@ -21,7 +22,20 @@ const disasters = useDisastersStore()
 const hazards = useHazardsStore()
 const points = useCoordinationPointsStore()
 const route = useRouteStore()
+const notifications = useNotificationsStore()
 const { active, activeId } = storeToRefs(disasters)
+
+const SERVER_DOWN = 'Could not reach the server. Make sure the backend is running (dotnet run on port 5180), then try again.'
+
+/** Runs an API action, surfacing a friendly banner instead of an uncaught error if it fails. */
+async function withServerError<T>(action: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await action()
+  } catch {
+    notifications.notify(SERVER_DOWN)
+    return undefined
+  }
+}
 
 const hub = createMapHub()
 let hubConnected = false
@@ -35,7 +49,7 @@ const contextMenu = ref<MapClick | null>(null)
 
 const hasActive = computed(() => active.value !== null)
 
-onMounted(() => disasters.load())
+onMounted(() => withServerError(() => disasters.load()))
 
 async function ensureHub(disasterId: string) {
   const handlers = {
@@ -62,7 +76,7 @@ async function selectDisaster(id: string) {
   disasters.select(id)
   resetTransient()
   route.clear()
-  await Promise.all([hazards.load(id), points.load(id)])
+  await withServerError(() => Promise.all([hazards.load(id), points.load(id)]))
   await ensureHub(id)
 }
 
@@ -142,22 +156,26 @@ async function tryRoute() {
 }
 
 async function submitDisaster(input: CreateDisaster) {
-  const created = await disasters.create(input)
-  await selectDisaster(created.id)
+  const created = await withServerError(() => disasters.create(input))
+  if (created) await selectDisaster(created.id)
 }
 
 async function submitHazard(input: CreateHazard) {
   if (!activeId.value) return
-  await hazards.create(activeId.value, input)
-  pendingLocation.value = null
-  mode.value = null
+  const created = await withServerError(() => hazards.create(activeId.value!, input))
+  if (created) {
+    pendingLocation.value = null
+    mode.value = null
+  }
 }
 
 async function submitPoint(input: CreateCoordinationPoint) {
   if (!activeId.value) return
-  await points.create(activeId.value, input)
-  pendingLocation.value = null
-  mode.value = null
+  const created = await withServerError(() => points.create(activeId.value!, input))
+  if (created) {
+    pendingLocation.value = null
+    mode.value = null
+  }
 }
 
 function clearRoute() {
@@ -171,6 +189,19 @@ function clearRoute() {
   <div class="app">
     <aside class="sidebar">
       <h1>BeaconMap</h1>
+
+      <div v-if="notifications.messages.length" class="banners">
+        <div
+          v-for="(message, i) in notifications.messages"
+          :key="i"
+          class="banner"
+          data-test="notification"
+        >
+          <span>{{ message }}</span>
+          <button class="banner-dismiss" aria-label="Dismiss" @click="notifications.dismiss(i)">×</button>
+        </div>
+      </div>
+
       <DisasterPicker
         :disasters="disasters.disasters"
         :active-id="activeId"
@@ -267,6 +298,29 @@ input, select { width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px; 
 .coords, .hint, .counts, .mode-hint { font-size: 0.8rem; color: #94a3b8; }
 .route-summary { color: #34d399; font-size: 0.85rem; }
 .error { color: #f87171; font-size: 0.85rem; }
+
+.banners { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #7f1d1d;
+  color: #fee2e2;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+.banner-dismiss {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #fecaca;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
 
 .context-menu {
   position: absolute;
