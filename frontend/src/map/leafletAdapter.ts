@@ -41,11 +41,19 @@ function hazardIcon(type: string): L.DivIcon {
 }
 
 export function createLeafletAdapter(element: HTMLElement): MapAdapter {
-  const map = L.map(element).setView([20, 0], 2)
+  // Constrain to a single world: don't let tiles repeat horizontally, keep panning within the
+  // world bounds, and stop zooming out past one Earth.
+  const worldBounds = L.latLngBounds([-85, -180], [85, 180])
+  const map = L.map(element, {
+    minZoom: 2,
+    maxBounds: worldBounds,
+    maxBoundsViscosity: 1,
+  }).setView([20, 0], 2)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19,
+    noWrap: true,
   }).addTo(map)
 
   const disasterLayer = L.layerGroup().addTo(map)
