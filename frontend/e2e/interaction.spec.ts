@@ -109,3 +109,45 @@ test('a disaster can be deleted', async ({ page }) => {
 
   await expect(page.locator('.leaflet-tooltip.disaster-label')).toHaveCount(0)
 })
+
+test('a route can start at a coordination point', async ({ page }) => {
+  const point = {
+    id: 'c1', disasterId: disaster.id, name: 'Command HQ', type: 'CommandPost',
+    lat: 51.51, lng: -0.12, description: null, createdAtUtc: '2026-01-01T00:00:00Z',
+  }
+  const routeData = {
+    coordinates: [{ lat: 51.51, lng: -0.12 }, { lat: 51.515, lng: -0.114 }],
+    distanceMeters: 1200, durationSeconds: 180,
+  }
+  await page.route('**/api/disasters', (route) => route.fulfill({ json: [disaster] }))
+  await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*/coordination-points', (route) => route.fulfill({ json: [point] }))
+  await page.route('**/api/disasters/*/routes', (route) => route.fulfill({ json: routeData }))
+  await page.route('**/hubs/**', (route) => route.abort())
+
+  await page.goto('/')
+  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await expect(page.locator('.point-div-icon')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Set start' }).click()
+  await page.locator('.point-div-icon').click() // route start snaps to the coordination point
+  await page.locator('.leaflet-container').click({ position: { x: 430, y: 300 } }) // end
+
+  await expect(page.locator('path.route-line')).toBeVisible()
+})
+
+test('type options read as words, not run-on enum names', async ({ page }) => {
+  await page.route('**/api/disasters', (route) => route.fulfill({ json: [disaster] }))
+  await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*/coordination-points', (route) => route.fulfill({ json: [] }))
+  await page.route('**/hubs/**', (route) => route.abort())
+
+  await page.goto('/')
+  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+  await page.locator('[data-test=menu-add-hazard]').click()
+
+  const options = (await page.locator('[data-test=hazard-type] option').allInnerTexts()).join(' ')
+  expect(options).toContain('Blocked road')
+  expect(options).not.toContain('BlockedRoad')
+})

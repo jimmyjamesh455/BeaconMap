@@ -8,6 +8,8 @@ import { useHazardsStore } from './stores/hazards'
 import { useCoordinationPointsStore } from './stores/coordinationPoints'
 import { useRouteStore } from './stores/route'
 import { useNotificationsStore } from './stores/notifications'
+import { useEmergencyServicesStore } from './stores/emergencyServices'
+import type { Bounds } from './api/overpass'
 import { createMapHub } from './realtime/mapHub'
 import DisasterPicker from './components/DisasterPicker.vue'
 import DisasterForm from './components/DisasterForm.vue'
@@ -23,6 +25,7 @@ const hazards = useHazardsStore()
 const points = useCoordinationPointsStore()
 const route = useRouteStore()
 const notifications = useNotificationsStore()
+const services = useEmergencyServicesStore()
 const { active, activeId } = storeToRefs(disasters)
 
 const SERVER_DOWN = 'Could not reach the server. Make sure the backend is running (dotnet run on port 5180), then try again.'
@@ -78,6 +81,7 @@ async function selectDisaster(id: string) {
   disasters.select(id)
   resetTransient()
   route.clear()
+  services.clear()
   await withServerError(() => Promise.all([hazards.load(id), points.load(id)]))
   await ensureHub(id)
 }
@@ -195,9 +199,48 @@ async function deleteActiveDisaster() {
     hazards.clear()
     points.clear()
     route.clear()
+    services.clear()
     resetTransient()
   } catch {
     notifications.notify(SERVER_DOWN)
+  }
+}
+
+const modeHintText = computed(() => {
+  switch (mode.value) {
+    case 'new-disaster': return 'Click the map to outline the disaster area.'
+    case 'hazard': return 'Click the map to place a hazard.'
+    case 'point': return 'Click the map to place a coordination point.'
+    case 'route-start': return 'Click the map or a marker to set the route start.'
+    case 'route-end': return 'Click the map or a marker to set the route end.'
+    default: return ''
+  }
+})
+
+function areaBounds(area: LatLng[]): Bounds {
+  const lats = area.map((p) => p.lat)
+  const lngs = area.map((p) => p.lng)
+  return { south: Math.min(...lats), north: Math.max(...lats), west: Math.min(...lngs), east: Math.max(...lngs) }
+}
+
+async function toggleServices() {
+  if (!active.value) return
+  try {
+    await services.toggle(areaBounds(active.value.area))
+  } catch {
+    notifications.notify('Could not load emergency services from OpenStreetMap. Please try again.')
+  }
+}
+
+// Routes can start/end at a coordination point or emergency-service marker (exact location).
+function onMarkerClick(point: LatLng) {
+  if (mode.value === 'route-start') {
+    routeStart.value = point
+    mode.value = 'route-end'
+  } else if (mode.value === 'route-end') {
+    routeEnd.value = point
+    mode.value = null
+    void tryRoute()
   }
 }
 </script>
@@ -246,8 +289,8 @@ async function deleteActiveDisaster() {
 
         <template v-if="hasActive && mode !== 'new-disaster'">
           <div class="toolbar">
-            <button :class="{ active: mode === 'hazard' }" @click="setMode('hazard')">Add hazard</button>
-            <button :class="{ active: mode === 'point' }" @click="setMode('point')">Add point</button>
+            <button :class="{ active: mode === 'hazard' }" @click="setMode('hazard')">🚧 Add hazard</button>
+            <button :class="{ active: mode === 'point' }" @click="setMode('point')">🚩 Add point</button>
           </div>
 
           <HazardForm
@@ -274,15 +317,24 @@ async function deleteActiveDisaster() {
             @clear="clearRoute"
           />
 
+          <button
+            class="services-btn"
+            data-test="toggle-services"
+            :disabled="services.loading"
+            @click="toggleServices"
+          >
+            {{ services.loading ? 'Loading…' : services.visible ? 'Hide emergency services' : '🚑 Show emergency services' }}
+          </button>
+
           <p class="counts">{{ hazards.hazards.length }} hazards · {{ points.points.length }} points</p>
         </template>
 
-        <p v-if="mode" class="mode-hint">Click the map to place ({{ mode }}).</p>
+        <p v-if="modeHintText" class="mode-hint">{{ modeHintText }}</p>
       </div>
     </aside>
 
     <main class="map-pane">
-      <MapView :draft-area="draftArea" @map-click="onMapClick" />
+      <MapView :draft-area="draftArea" @map-click="onMapClick" @marker-click="onMarkerClick" />
 
       <div
         v-if="contextMenu"
@@ -290,9 +342,9 @@ async function deleteActiveDisaster() {
         :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
         data-test="map-context-menu"
       >
-        <button data-test="menu-add-hazard" @click="addHazardHere">Add hazard</button>
-        <button data-test="menu-add-point" @click="addPointHere">Add coordination point</button>
-        <button data-test="menu-start-route" @click="startRouteHere">Start route here</button>
+        <button data-test="menu-add-hazard" @click="addHazardHere">🚧 Add hazard</button>
+        <button data-test="menu-add-point" @click="addPointHere">🚩 Add coordination point</button>
+        <button data-test="menu-start-route" @click="startRouteHere">🟢 Start route here</button>
         <button class="menu-cancel" @click="contextMenu = null">Cancel</button>
       </div>
     </main>
@@ -387,6 +439,24 @@ input, select { width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px; 
   font-size: 0.8rem;
 }
 .leaflet-tooltip.disaster-label::before { display: none; }
+
+.services-btn { width: 100%; margin-bottom: 8px; }
+
+/* Map icon "chips": fixed on-screen size at every zoom, with a high-contrast circle. */
+.leaflet-marker-icon.map-pin-icon { background: transparent; border: none; }
+.map-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #1e293b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+}
 
 @media (max-width: 720px) {
   /* Phone: the map dominates; controls collapse to a compact, scrollable panel. */

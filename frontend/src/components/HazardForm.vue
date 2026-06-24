@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { CreateHazard, HazardType, LatLng } from '../api/types'
+import { hazardMeta } from '../icons'
 
 const props = defineProps<{ location: LatLng }>()
 const emit = defineEmits<{ submit: [CreateHazard]; cancel: [] }>()
@@ -28,7 +29,7 @@ function submit() {
     <label>
       Type
       <select v-model="type" data-test="hazard-type">
-        <option v-for="t in hazardTypes" :key="t" :value="t">{{ t }}</option>
+        <option v-for="t in hazardTypes" :key="t" :value="t">{{ hazardMeta[t].emoji }} {{ hazardMeta[t].label }}</option>
       </select>
     </label>
     <label>

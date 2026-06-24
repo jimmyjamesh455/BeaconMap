@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { CreateDisaster, DisasterType, LatLng } from '../api/types'
+import { disasterMeta } from '../icons'
 
 const props = defineProps<{ area: LatLng[] }>()
 const emit = defineEmits<{ submit: [CreateDisaster]; cancel: [] }>()
@@ -36,7 +37,7 @@ function submit() {
     <label>
       Type
       <select v-model="type" data-test="disaster-type">
-        <option v-for="t in disasterTypes" :key="t" :value="t">{{ t }}</option>
+        <option v-for="t in disasterTypes" :key="t" :value="t">{{ disasterMeta[t].emoji }} {{ disasterMeta[t].label }}</option>
       </select>
     </label>
     <label>

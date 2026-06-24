@@ -1,4 +1,4 @@
-import type { CoordinationPoint, Disaster, Hazard, LatLng, Route } from '../api/types'
+import type { CoordinationPoint, Disaster, EmergencyService, Hazard, LatLng, Route } from '../api/types'
 
 /** A map click: geographic position plus container pixel coords (to position UI over the map). */
 export interface MapClick {
@@ -14,6 +14,8 @@ export interface MapClick {
  */
 export interface MapAdapter {
   onClick(handler: (click: MapClick) => void): void
+  /** Fires when a point marker (coordination point or emergency service) is clicked. */
+  onMarkerClick(handler: (point: LatLng) => void): void
   fitTo(points: LatLng[]): void
   /** Draw every disaster's outline + label; the selected one is highlighted. */
   drawDisasters(disasters: Disaster[], selectedId: string | null): void
@@ -21,6 +23,7 @@ export interface MapAdapter {
   drawDraftArea(ring: LatLng[]): void
   drawHazards(hazards: Hazard[]): void
   drawCoordinationPoints(points: CoordinationPoint[]): void
+  drawEmergencyServices(services: EmergencyService[]): void
   drawRoute(route: Route | null): void
   destroy(): void
 }

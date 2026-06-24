@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { CoordinationPointType, CreateCoordinationPoint, LatLng } from '../api/types'
+import { pointMeta } from '../icons'
 
 const props = defineProps<{ location: LatLng }>()
 const emit = defineEmits<{ submit: [CreateCoordinationPoint]; cancel: [] }>()
@@ -33,7 +34,7 @@ function submit() {
     <label>
       Type
       <select v-model="type" data-test="point-type">
-        <option v-for="t in pointTypes" :key="t" :value="t">{{ t }}</option>
+        <option v-for="t in pointTypes" :key="t" :value="t">{{ pointMeta[t].emoji }} {{ pointMeta[t].label }}</option>
       </select>
     </label>
     <label>

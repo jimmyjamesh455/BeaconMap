@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Disaster } from '../api/types'
+import { disasterMeta } from '../icons'
 
 defineProps<{ disasters: Disaster[]; activeId: string | null }>()
 const emit = defineEmits<{ select: [string]; create: []; delete: [] }>()
@@ -17,7 +18,7 @@ function onChange(event: Event) {
       <select :value="activeId ?? ''" data-test="disaster-select" @change="onChange">
         <option value="" disabled>Select a disaster…</option>
         <option v-for="d in disasters" :key="d.id" :value="d.id">
-          {{ d.name }} ({{ d.type }})
+          {{ disasterMeta[d.type].emoji }} {{ d.name }} ({{ disasterMeta[d.type].label }})
         </option>
       </select>
     </label>

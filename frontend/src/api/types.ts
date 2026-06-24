@@ -83,6 +83,16 @@ export interface CreateCoordinationPoint {
   description: string | null
 }
 
+export type ServiceKind = 'police' | 'hospital' | 'fire_station'
+
+export interface EmergencyService {
+  id: string
+  kind: ServiceKind
+  name: string
+  lat: number
+  lng: number
+}
+
 export interface RouteRequest {
   start: LatLng
   end: LatLng
