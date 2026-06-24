@@ -30,14 +30,29 @@ const HAZARD_EMOJI: Record<string, string> = {
   Other: '❗',
 }
 
-function hazardIcon(type: string): L.DivIcon {
-  const emoji = HAZARD_EMOJI[type] ?? HAZARD_EMOJI.Other
+const POINT_EMOJI: Record<string, string> = {
+  CommandPost: '🚩',
+  MedicalStation: '🏥',
+  Shelter: '🏠',
+  Supply: '📦',
+  Other: '📍',
+}
+
+function emojiIcon(emoji: string, className: string): L.DivIcon {
   return L.divIcon({
-    className: 'hazard-div-icon',
+    className,
     html: `<span style="font-size:20px;line-height:26px;filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff)">${emoji}</span>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   })
+}
+
+function hazardIcon(type: string): L.DivIcon {
+  return emojiIcon(HAZARD_EMOJI[type] ?? HAZARD_EMOJI.Other, 'hazard-div-icon')
+}
+
+function pointIcon(type: string): L.DivIcon {
+  return emojiIcon(POINT_EMOJI[type] ?? POINT_EMOJI.Other, 'point-div-icon')
 }
 
 export function createLeafletAdapter(element: HTMLElement): MapAdapter {
@@ -134,7 +149,7 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     drawCoordinationPoints(points: CoordinationPoint[]) {
       pointLayer.clearLayers()
       for (const p of points) {
-        L.marker([p.lat, p.lng])
+        L.marker([p.lat, p.lng], { icon: pointIcon(p.type) })
           .bindPopup(`<b>${p.name}</b><br>${p.type}`)
           .addTo(pointLayer)
       }

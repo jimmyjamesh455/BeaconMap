@@ -69,3 +69,43 @@ test('left-click offers an add menu, and adding a hazard drops an icon on the ma
   // The hazard icon marker appears on the map.
   await expect(page.locator('.hazard-div-icon')).toHaveCount(1)
 })
+
+test('adding a coordination point drops an icon on the map', async ({ page }) => {
+  const createdPoint = {
+    id: 'c1', disasterId: disaster.id, name: 'Command HQ', type: 'CommandPost',
+    lat: 51.51, lng: -0.12, description: null, createdAtUtc: '2026-01-01T00:00:00Z',
+  }
+  await page.route('**/api/disasters', (route) => route.fulfill({ json: [disaster] }))
+  await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*/coordination-points', (route) =>
+    route.fulfill({ json: route.request().method() === 'GET' ? [] : createdPoint }))
+  await page.route('**/hubs/**', (route) => route.abort())
+
+  await page.goto('/')
+  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+
+  await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+  await page.locator('[data-test=menu-add-point]').click()
+  await page.locator('[data-test=point-name]').fill('Command HQ')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.locator('.point-div-icon')).toHaveCount(1)
+})
+
+test('a disaster can be deleted', async ({ page }) => {
+  await page.route('**/api/disasters', (route) => route.fulfill({ json: [disaster] }))
+  await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*/coordination-points', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*', (route) =>
+    route.request().method() === 'DELETE' ? route.fulfill({ status: 204, body: '' }) : route.continue())
+  await page.route('**/hubs/**', (route) => route.abort())
+  page.on('dialog', (dialog) => dialog.accept())
+
+  await page.goto('/')
+  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await expect(page.locator('.leaflet-tooltip.disaster-label')).toHaveCount(1)
+
+  await page.locator('[data-test=delete-disaster]').click()
+
+  await expect(page.locator('.leaflet-tooltip.disaster-label')).toHaveCount(0)
+})

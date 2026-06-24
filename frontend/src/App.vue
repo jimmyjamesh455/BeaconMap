@@ -46,6 +46,8 @@ const draftArea = ref<LatLng[]>([])
 const routeStart = ref<LatLng | null>(null)
 const routeEnd = ref<LatLng | null>(null)
 const contextMenu = ref<MapClick | null>(null)
+// Collapsed by default on phones so the map gets the screen; open on larger screens.
+const controlsOpen = ref(typeof window === 'undefined' || window.innerWidth > 720)
 
 const hasActive = computed(() => active.value !== null)
 
@@ -183,12 +185,36 @@ function clearRoute() {
   routeStart.value = null
   routeEnd.value = null
 }
+
+async function deleteActiveDisaster() {
+  if (!activeId.value) return
+  const name = active.value?.name ?? 'this disaster'
+  if (!window.confirm(`Delete "${name}" and all its hazards and coordination points?`)) return
+  try {
+    await disasters.remove(activeId.value)
+    hazards.clear()
+    points.clear()
+    route.clear()
+    resetTransient()
+  } catch {
+    notifications.notify(SERVER_DOWN)
+  }
+}
 </script>
 
 <template>
   <div class="app">
     <aside class="sidebar">
-      <h1>BeaconMap</h1>
+      <div class="sidebar-header">
+        <h1>BeaconMap</h1>
+        <button
+          class="controls-toggle"
+          data-test="controls-toggle"
+          @click="controlsOpen = !controlsOpen"
+        >
+          {{ controlsOpen ? 'Hide ▲' : 'Controls ▾' }}
+        </button>
+      </div>
 
       <div v-if="notifications.messages.length" class="banners">
         <div
@@ -202,54 +228,57 @@ function clearRoute() {
         </div>
       </div>
 
-      <DisasterPicker
-        :disasters="disasters.disasters"
-        :active-id="activeId"
-        @select="selectDisaster"
-        @create="startNewDisaster"
-      />
-
-      <DisasterForm
-        v-if="mode === 'new-disaster'"
-        :area="draftArea"
-        @submit="submitDisaster"
-        @cancel="resetTransient"
-      />
-
-      <template v-if="hasActive && mode !== 'new-disaster'">
-        <div class="toolbar">
-          <button :class="{ active: mode === 'hazard' }" @click="setMode('hazard')">Add hazard</button>
-          <button :class="{ active: mode === 'point' }" @click="setMode('point')">Add point</button>
-        </div>
-
-        <HazardForm
-          v-if="mode === 'hazard' && pendingLocation"
-          :location="pendingLocation"
-          @submit="submitHazard"
-          @cancel="pendingLocation = null"
-        />
-        <CoordinationPointForm
-          v-if="mode === 'point' && pendingLocation"
-          :location="pendingLocation"
-          @submit="submitPoint"
-          @cancel="pendingLocation = null"
+      <div v-show="controlsOpen" class="sidebar-body" data-test="controls">
+        <DisasterPicker
+          :disasters="disasters.disasters"
+          :active-id="activeId"
+          @select="selectDisaster"
+          @create="startNewDisaster"
+          @delete="deleteActiveDisaster"
         />
 
-        <RoutePanel
-          :route="route.route"
-          :error="route.error"
-          :has-start="routeStart !== null"
-          :has-end="routeEnd !== null"
-          :active-mode="mode"
-          @set-start="setMode('route-start')"
-          @set-end="setMode('route-end')"
-          @clear="clearRoute"
+        <DisasterForm
+          v-if="mode === 'new-disaster'"
+          :area="draftArea"
+          @submit="submitDisaster"
+          @cancel="resetTransient"
         />
 
-        <p class="counts">{{ hazards.hazards.length }} hazards · {{ points.points.length }} points</p>
-      </template>
+        <template v-if="hasActive && mode !== 'new-disaster'">
+          <div class="toolbar">
+            <button :class="{ active: mode === 'hazard' }" @click="setMode('hazard')">Add hazard</button>
+            <button :class="{ active: mode === 'point' }" @click="setMode('point')">Add point</button>
+          </div>
 
-      <p v-if="mode" class="mode-hint">Click the map to place ({{ mode }}).</p>
+          <HazardForm
+            v-if="mode === 'hazard' && pendingLocation"
+            :location="pendingLocation"
+            @submit="submitHazard"
+            @cancel="pendingLocation = null"
+          />
+          <CoordinationPointForm
+            v-if="mode === 'point' && pendingLocation"
+            :location="pendingLocation"
+            @submit="submitPoint"
+            @cancel="pendingLocation = null"
+          />
+
+          <RoutePanel
+            :route="route.route"
+            :error="route.error"
+            :has-start="routeStart !== null"
+            :has-end="routeEnd !== null"
+            :active-mode="mode"
+            @set-start="setMode('route-start')"
+            @set-end="setMode('route-end')"
+            @clear="clearRoute"
+          />
+
+          <p class="counts">{{ hazards.hazards.length }} hazards · {{ points.points.length }} points</p>
+        </template>
+
+        <p v-if="mode" class="mode-hint">Click the map to place ({{ mode }}).</p>
+      </div>
     </aside>
 
     <main class="map-pane">
@@ -278,7 +307,11 @@ body { margin: 0; font-family: system-ui, sans-serif; }
   width: 320px; padding: 16px; overflow-y: auto;
   background: #0f172a; color: #e2e8f0; flex-shrink: 0;
 }
-.sidebar h1 { font-size: 1.2rem; margin: 0 0 12px; }
+.sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.sidebar h1 { font-size: 1.2rem; margin: 0; }
+.controls-toggle { display: none; }
+button.danger { background: #7f1d1d; border-color: #b91c1c; }
+button.danger:hover { background: #b91c1c; }
 .map-pane { flex: 1; position: relative; }
 .map { position: absolute; inset: 0; }
 .picker { display: flex; gap: 8px; align-items: end; margin-bottom: 12px; }
@@ -356,8 +389,11 @@ input, select { width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px; 
 .leaflet-tooltip.disaster-label::before { display: none; }
 
 @media (max-width: 720px) {
+  /* Phone: the map dominates; controls collapse to a compact, scrollable panel. */
   .app { flex-direction: column; }
-  .sidebar { width: 100%; height: 45vh; }
-  .map-pane { height: 55vh; }
+  .sidebar { width: 100%; max-height: 60vh; flex-shrink: 0; padding: 10px 12px; }
+  .sidebar-body { max-height: 48vh; overflow-y: auto; }
+  .controls-toggle { display: inline-block; }
+  .map-pane { flex: 1; }
 }
 </style>

@@ -2,7 +2,7 @@
 import type { Disaster } from '../api/types'
 
 defineProps<{ disasters: Disaster[]; activeId: string | null }>()
-const emit = defineEmits<{ select: [string]; create: [] }>()
+const emit = defineEmits<{ select: [string]; create: []; delete: [] }>()
 
 function onChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value
@@ -22,5 +22,6 @@ function onChange(event: Event) {
       </select>
     </label>
     <button data-test="new-disaster" @click="emit('create')">+ New</button>
+    <button v-if="activeId" class="danger" data-test="delete-disaster" @click="emit('delete')">Delete</button>
   </div>
 </template>
