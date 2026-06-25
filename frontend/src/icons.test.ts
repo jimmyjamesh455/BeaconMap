@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hazardMeta, pointMeta, serviceMeta, disasterMeta } from './icons'
+import { hazardMeta, pointMeta, serviceMeta, disasterMeta, hazardInfo, disasterInfo } from './icons'
 
 describe('icon metadata', () => {
   it('gives hazards human-readable labels (not run-on enum names)', () => {
@@ -21,5 +21,12 @@ describe('icon metadata', () => {
     for (const meta of Object.values(disasterMeta)) {
       expect(meta.emoji).toBeTruthy()
     }
+  })
+
+  it('resolvers fall back to a default for unknown/legacy values (never undefined)', () => {
+    expect(hazardInfo('SomethingOld')).toBe(hazardMeta.Other)
+    expect(disasterInfo('')).toBe(disasterMeta.Other)
+    // Known values still resolve normally.
+    expect(hazardInfo('Fire')).toBe(hazardMeta.Fire)
   })
 })

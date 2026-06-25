@@ -21,7 +21,15 @@ export function createApiClient(baseUrl: string = defaultBaseUrl, fetchFn: Fetch
       ...init,
     })
     if (!response.ok) {
-      throw new Error(`Request to ${path} failed with status ${response.status}`)
+      // Surface the server's error detail (e.g. why a route could not be computed) when present.
+      let detail = ''
+      try {
+        const body = await response.json()
+        if (body && typeof body.error === 'string') detail = body.error
+      } catch {
+        // Body wasn't JSON; fall back to a generic message.
+      }
+      throw new Error(detail || `Request failed with status ${response.status}`)
     }
     if (response.status === 204) {
       return undefined as T

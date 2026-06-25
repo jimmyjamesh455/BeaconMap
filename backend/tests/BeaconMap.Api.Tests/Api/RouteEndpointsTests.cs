@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using BeaconMap.Api.Contracts;
 using BeaconMap.Api.Domain;
 using BeaconMap.Api.Routing;
@@ -102,5 +103,21 @@ public class RouteEndpointsTests
         var response = await client.PostAsJsonAsync($"/api/disasters/{disasterId}/routes", ValidRoute(), TestApiFactory.Json);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_route_returns_the_provider_error_detail()
+    {
+        var stub = new StubRouteProvider(
+            toThrow: new RouteProviderException("Could not find a routable point near the coordination point."));
+        using var factory = new TestApiFactory { RouteProviderOverride = stub };
+        var client = factory.CreateClient();
+        var disasterId = await ApiTestHelpers.CreateDisasterAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/disasters/{disasterId}/routes", ValidRoute(), TestApiFactory.Json);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Contains("routable point", body.GetProperty("error").GetString());
     }
 }

@@ -46,9 +46,9 @@ public static class RouteEndpoints
                         result.DurationSeconds);
                     return Results.Ok(dto);
                 }
-                catch (RouteProviderException)
+                catch (RouteProviderException ex)
                 {
-                    return Results.StatusCode(StatusCodes.Status502BadGateway);
+                    return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status502BadGateway);
                 }
             });
 

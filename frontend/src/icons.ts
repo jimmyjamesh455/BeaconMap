@@ -37,3 +37,9 @@ export const serviceMeta: Record<ServiceKind, IconMeta> = {
   hospital: { emoji: '🏥', label: 'Hospital' },
   fire_station: { emoji: '🚒', label: 'Fire station' },
 }
+
+// Resolvers that never return undefined, so unexpected/legacy data can't crash the map.
+export const hazardInfo = (type: string): IconMeta => hazardMeta[type as HazardType] ?? hazardMeta.Other
+export const pointInfo = (type: string): IconMeta => pointMeta[type as CoordinationPointType] ?? pointMeta.Other
+export const disasterInfo = (type: string): IconMeta => disasterMeta[type as DisasterType] ?? disasterMeta.Other
+export const serviceInfo = (kind: string): IconMeta => serviceMeta[kind as ServiceKind] ?? serviceMeta.police

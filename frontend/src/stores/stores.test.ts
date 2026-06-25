@@ -105,13 +105,15 @@ describe('route store', () => {
     expect(store.error).toBeNull()
   })
 
-  it('sets an error message when routing fails', async () => {
-    setApiClient({ requestRoute: vi.fn().mockRejectedValue(new Error('502')) } as unknown as ApiClient)
+  it('surfaces the server error message when routing fails', async () => {
+    setApiClient({
+      requestRoute: vi.fn().mockRejectedValue(new Error('Could not find a routable point near the start.')),
+    } as unknown as ApiClient)
     const store = useRouteStore()
 
     await store.request('d1', { lat: 1, lng: 2 }, { lat: 3, lng: 4 })
 
     expect(store.route).toBeNull()
-    expect(store.error).not.toBeNull()
+    expect(store.error).toBe('Could not find a routable point near the start.')
   })
 })

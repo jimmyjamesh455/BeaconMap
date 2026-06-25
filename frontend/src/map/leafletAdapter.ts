@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import type { CoordinationPoint, Disaster, EmergencyService, Hazard, LatLng, Route } from '../api/types'
 import type { MapAdapter } from './MapAdapter'
 import { formatRouteSummary } from '../format'
-import { disasterMeta, hazardMeta, pointMeta, serviceMeta } from '../icons'
+import { disasterInfo, hazardInfo, pointInfo, serviceInfo } from '../icons'
 
 const HAZARD_COLOURS: Record<string, string> = {
   BlockedRoad: '#b45309',
@@ -81,7 +81,7 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       for (const d of disasters) {
         if (d.area.length === 0) continue
         const selected = d.id === selectedId
-        const meta = disasterMeta[d.type]
+        const meta = disasterInfo(d.type)
         // Outlines are non-interactive so map clicks (to add hazards/points) pass through.
         const polygon = L.polygon(
           d.area.map((p) => [p.lat, p.lng] as [number, number]),
@@ -125,23 +125,26 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
           weight: 3,
           fillOpacity: 0.35,
         }).addTo(hazardLayer)
-        L.marker([h.lat, h.lng], { icon: emojiIcon(hazardMeta[h.type].emoji, 'hazard-div-icon') })
-          .bindPopup(`<b>${hazardMeta[h.type].label}</b><br>${h.description ?? ''}`)
+        const meta = hazardInfo(h.type)
+        L.marker([h.lat, h.lng], { icon: emojiIcon(meta.emoji, 'hazard-div-icon') })
+          .bindPopup(`<b>${meta.label}</b><br>${h.description ?? ''}`)
           .addTo(hazardLayer)
       }
     },
     drawCoordinationPoints(points: CoordinationPoint[]) {
       pointLayer.clearLayers()
       for (const p of points) {
-        pointMarker(p.lat, p.lng, emojiIcon(pointMeta[p.type].emoji, 'point-div-icon'),
-          `${p.name} — ${pointMeta[p.type].label}`).addTo(pointLayer)
+        const meta = pointInfo(p.type)
+        pointMarker(p.lat, p.lng, emojiIcon(meta.emoji, 'point-div-icon'),
+          `${p.name} — ${meta.label}`).addTo(pointLayer)
       }
     },
     drawEmergencyServices(services: EmergencyService[]) {
       serviceLayer.clearLayers()
       for (const s of services) {
-        pointMarker(s.lat, s.lng, emojiIcon(serviceMeta[s.kind].emoji, 'service-div-icon'),
-          `${s.name} — ${serviceMeta[s.kind].label}`).addTo(serviceLayer)
+        const meta = serviceInfo(s.kind)
+        pointMarker(s.lat, s.lng, emojiIcon(meta.emoji, 'service-div-icon'),
+          `${s.name} — ${meta.label}`).addTo(serviceLayer)
       }
     },
     drawRoute(route: Route | null) {

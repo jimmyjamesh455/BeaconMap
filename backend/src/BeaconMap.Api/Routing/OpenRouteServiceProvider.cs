@@ -40,15 +40,14 @@ public class OpenRouteServiceProvider(HttpClient httpClient, OpenRouteServiceOpt
         if (!response.IsSuccessStatusCode)
         {
             var detail = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new RouteProviderException(
-                $"Routing service returned {(int)response.StatusCode}: {detail}");
+            throw new RouteProviderException(DescribeError(detail, (int)response.StatusCode));
         }
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         return ParseRoute(json);
     }
 
-    private static Dictionary<string, object> BuildRequestBody(
+    private Dictionary<string, object> BuildRequestBody(
         RoutePoint start, RoutePoint end, IReadOnlyList<HazardZone> avoidZones)
     {
         var body = new Dictionary<string, object>
@@ -58,6 +57,8 @@ public class OpenRouteServiceProvider(HttpClient httpClient, OpenRouteServiceOpt
                 new[] { start.Lng, start.Lat },
                 new[] { end.Lng, end.Lat },
             },
+            // Snap each point to the nearest road (so off-road points / coordination points route).
+            ["radiuses"] = new[] { options.SnapRadiusMeters, options.SnapRadiusMeters },
         };
 
         if (avoidZones.Count > 0)
@@ -85,12 +86,50 @@ public class OpenRouteServiceProvider(HttpClient httpClient, OpenRouteServiceOpt
         return [ring];
     }
 
+    /// <summary>Pulls a human-readable message out of an ORS error body when possible.</summary>
+    private static string DescribeError(string body, int statusCode)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error))
+            {
+                if (error.ValueKind == JsonValueKind.Object &&
+                    error.TryGetProperty("message", out var message))
+                {
+                    return message.GetString() ?? body;
+                }
+                if (error.ValueKind == JsonValueKind.String)
+                {
+                    return error.GetString() ?? body;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Not JSON — fall through to a generic message.
+        }
+
+        return statusCode switch
+        {
+            401 or 403 => "Routing service rejected the request — check the OpenRouteService API key.",
+            429 => "Routing service rate limit reached — please try again shortly.",
+            _ => $"Routing service returned HTTP {statusCode}.",
+        };
+    }
+
     private static RouteResult ParseRoute(string json)
     {
         try
         {
             using var doc = JsonDocument.Parse(json);
-            var feature = doc.RootElement.GetProperty("features")[0];
+            var features = doc.RootElement.GetProperty("features");
+            if (features.GetArrayLength() == 0)
+            {
+                throw new RouteProviderException("No route could be found between the selected points.");
+            }
+
+            var feature = features[0];
 
             var coordinates = feature
                 .GetProperty("geometry")

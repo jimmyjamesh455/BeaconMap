@@ -76,10 +76,10 @@ describe('api client', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('http://api.test/api/disasters/d1/routes')
   })
 
-  it('throws when the response is not ok', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'bad' }, 400))
+  it('throws with the server error detail when the response is not ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'No route could be found.' }, 502))
     const client = createApiClient(baseUrl, fetchMock)
 
-    await expect(client.listDisasters()).rejects.toThrow()
+    await expect(client.listDisasters()).rejects.toThrow('No route could be found.')
   })
 })

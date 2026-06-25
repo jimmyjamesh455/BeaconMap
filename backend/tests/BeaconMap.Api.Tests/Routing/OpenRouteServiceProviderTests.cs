@@ -32,6 +32,42 @@ public class OpenRouteServiceProviderTests
     }
 
     [Fact]
+    public async Task OrsProvider_sends_unlimited_snap_radius_so_off_road_points_route()
+    {
+        var handler = FakeHttpMessageHandler.WithJson(SuccessJson);
+        var provider = CreateProvider(handler);
+
+        await provider.GetRouteAsync(Start, End, "driving-car", []);
+
+        using var body = JsonDocument.Parse(handler.LastRequestBody!);
+        var radiuses = body.RootElement.GetProperty("radiuses").EnumerateArray().Select(r => r.GetDouble()).ToArray();
+        Assert.Equal(new double[] { -1, -1 }, radiuses);
+    }
+
+    [Fact]
+    public async Task OrsProvider_surfaces_the_ors_error_message()
+    {
+        var errorJson = """{ "error": { "code": 2010, "message": "Could not find routable point within a radius of 350.0 meters of specified coordinate 0." } }""";
+        var handler = FakeHttpMessageHandler.WithJson(errorJson, HttpStatusCode.BadRequest);
+        var provider = CreateProvider(handler);
+
+        var ex = await Assert.ThrowsAsync<RouteProviderException>(
+            () => provider.GetRouteAsync(Start, End, "driving-car", []));
+        Assert.Contains("Could not find routable point", ex.Message);
+    }
+
+    [Fact]
+    public async Task OrsProvider_reports_when_no_route_is_found()
+    {
+        var handler = FakeHttpMessageHandler.WithJson("""{ "type": "FeatureCollection", "features": [] }""");
+        var provider = CreateProvider(handler);
+
+        var ex = await Assert.ThrowsAsync<RouteProviderException>(
+            () => provider.GetRouteAsync(Start, End, "driving-car", []));
+        Assert.Contains("No route", ex.Message);
+    }
+
+    [Fact]
     public async Task OrsProvider_sends_avoid_polygons_for_each_hazard()
     {
         var handler = FakeHttpMessageHandler.WithJson(SuccessJson);

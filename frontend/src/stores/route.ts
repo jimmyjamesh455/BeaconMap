@@ -11,9 +11,11 @@ export const useRouteStore = defineStore('route', () => {
     error.value = null
     try {
       route.value = await api().requestRoute(disasterId, { start, end, profile })
-    } catch {
+    } catch (e) {
       route.value = null
-      error.value = 'Could not compute a route that avoids the recorded hazards.'
+      error.value = e instanceof Error && e.message
+        ? e.message
+        : 'Could not compute a route that avoids the recorded hazards.'
     }
   }
 
