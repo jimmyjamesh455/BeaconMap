@@ -46,11 +46,11 @@ test('loads and shows emergency services on demand', async ({ page }) => {
   await expect(page.locator('.service-div-icon')).toHaveCount(0)
 })
 
-test('asks the user to zoom in when the view is too wide', async ({ page }) => {
+test('disables the services button with a hint when the view is too wide', async ({ page }) => {
   // A large disaster area → fit zooms out below the services threshold.
   const wide = {
     ...disaster,
-    area: [{ lat: 50, lng: -5 }, { lat: 55, lng: -5 }, { lat: 55, lng: 2 }, { lat: 50, lng: 2 }],
+    area: [{ lat: 48, lng: -8 }, { lat: 56, lng: -8 }, { lat: 56, lng: 4 }, { lat: 48, lng: 4 }],
   }
   await page.route('**/api/disasters', (route) => route.fulfill({ json: [wide] }))
   await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
@@ -59,8 +59,8 @@ test('asks the user to zoom in when the view is too wide', async ({ page }) => {
 
   await page.goto('/')
   await page.getByText(wide.name).click()
-  await page.locator('[data-test=toggle-services]').click()
 
-  await expect(page.locator('[data-test=notification]')).toContainText('Zoom in')
+  await expect(page.locator('[data-test=toggle-services]')).toBeDisabled()
+  await expect(page.locator('[data-test=services-hint]')).toBeVisible()
   await expect(page.locator('.service-div-icon')).toHaveCount(0)
 })

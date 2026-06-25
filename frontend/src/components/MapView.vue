@@ -20,6 +20,7 @@ const emit = defineEmits<{
   'map-click': [MapClick]
   'marker-click': [MapMarkerClick]
   'disaster-click': [string]
+  'zoom-change': [number]
 }>()
 
 // Vue uses a function-typed prop default as-is (it won't call it), so resolve the factory
@@ -56,6 +57,7 @@ onMounted(() => {
   adapter.onClick((click) => emit('map-click', click))
   adapter.onMarkerClick((marker) => emit('marker-click', marker))
   adapter.onDisasterClick((id) => emit('disaster-click', id))
+  adapter.onZoom((zoom) => emit('zoom-change', zoom))
   adapter.drawCities(majorCities)
   adapter.drawDisasters(disasters.value, activeId.value)
   adapter.drawDraftArea(props.draftArea)

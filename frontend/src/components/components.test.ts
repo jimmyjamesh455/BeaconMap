@@ -26,6 +26,7 @@ function fakeAdapter(): FakeAdapter {
     onClick(handler: (c: MapClick) => void) { fake.clickHandler = handler },
     onMarkerClick(handler: (m: MapMarkerClick) => void) { fake.markerClickHandler = handler },
     onDisasterClick(handler: (id: string) => void) { fake.disasterClickHandler = handler },
+    onZoom: vi.fn(),
     getViewport: () => ({ bounds: { south: 0, west: 0, north: 1, east: 1 }, zoom: 13 }),
     fitTo: vi.fn(),
     drawDisasters: vi.fn(),

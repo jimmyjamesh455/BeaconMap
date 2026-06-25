@@ -55,6 +55,9 @@ const markerMenu = ref<{ kind: 'hazard' | 'point'; id: string; name: string; x: 
 const controlsOpen = ref(typeof window === 'undefined' || window.innerWidth > 720)
 const uiHidden = ref(false)
 const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
+const currentZoom = ref(2)
+const SERVICES_MIN_ZOOM = 10
+const canLoadServices = computed(() => currentZoom.value >= SERVICES_MIN_ZOOM)
 
 const theme = ref<Theme>(resolveInitialTheme())
 function toggleTheme() {
@@ -252,7 +255,7 @@ async function toggleServices() {
   }
   const viewport = mapViewRef.value?.getViewport()
   if (!viewport) return
-  if (viewport.zoom < 12) {
+  if (viewport.zoom < SERVICES_MIN_ZOOM) {
     notifications.notify('Zoom in to load emergency services for the area in view.')
     return
   }
@@ -389,11 +392,15 @@ function onDisasterClick(id: string) {
           <button
             class="services-btn"
             data-test="toggle-services"
-            :disabled="services.loading"
+            :disabled="services.loading || (!services.visible && !canLoadServices)"
+            :title="!services.visible && !canLoadServices ? 'Zoom in to load emergency services' : ''"
             @click="toggleServices"
           >
             {{ services.loading ? 'Loading…' : services.visible ? 'Hide emergency services' : '🚑 Show emergency services' }}
           </button>
+          <p v-if="!services.visible && !canLoadServices" class="hint" data-test="services-hint">
+            Zoom in to load emergency services for the area in view.
+          </p>
 
           <p class="counts">
             {{ hazards.hazards.length }} hazard{{ hazards.hazards.length === 1 ? '' : 's' }}
@@ -430,6 +437,7 @@ function onDisasterClick(id: string) {
         @map-click="onMapClick"
         @marker-click="onMarkerClick"
         @disaster-click="onDisasterClick"
+        @zoom-change="currentZoom = $event"
       />
 
       <div

@@ -33,6 +33,8 @@ export interface MapViewport {
 export interface MapAdapter {
   onClick(handler: (click: MapClick) => void): void
   onMarkerClick(handler: (marker: MapMarkerClick) => void): void
+  /** Fires with the current zoom level on load and whenever it changes. */
+  onZoom(handler: (zoom: number) => void): void
   /** Fires when a non-selected disaster outline is clicked (to select it). */
   onDisasterClick(handler: (disasterId: string) => void): void
   fitTo(points: LatLng[]): void

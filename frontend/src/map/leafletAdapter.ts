@@ -55,6 +55,8 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
 
   let markerClickHandler: ((marker: MapMarkerClick) => void) | null = null
   let disasterClickHandler: ((disasterId: string) => void) | null = null
+  let zoomHandler: ((zoom: number) => void) | null = null
+  map.on('zoomend', () => zoomHandler?.(map.getZoom()))
 
   // Keep the world filling the container: raise the minimum zoom to the level at which the world
   // covers the viewport, so widening the map (e.g. hiding the side panel) never leaves blank
@@ -107,6 +109,10 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     },
     onDisasterClick(handler) {
       disasterClickHandler = handler
+    },
+    onZoom(handler) {
+      zoomHandler = handler
+      handler(map.getZoom())
     },
     fitTo(points) {
       if (points.length === 0) return
@@ -216,10 +222,17 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     drawRoute(route: Route | null) {
       routeLayer.clearLayers()
       if (!route || route.coordinates.length === 0) return
-      L.polyline(route.coordinates.map((p) => [p.lat, p.lng] as [number, number]), {
+      const latlngs = route.coordinates.map((p) => [p.lat, p.lng] as [number, number])
+
+      // White casing underneath makes the route stand out on any basemap.
+      L.polyline(latlngs, { color: '#ffffff', weight: 11, opacity: 0.95, lineCap: 'round', lineJoin: 'round' })
+        .addTo(routeLayer)
+      L.polyline(latlngs, {
         color: SAFE,
         weight: 6,
-        opacity: 0.9,
+        opacity: 1,
+        lineCap: 'round',
+        lineJoin: 'round',
         className: 'route-line',
       })
         // Sticky tooltip follows the cursor while hovering the route line.
@@ -227,6 +240,16 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
           sticky: true,
           className: 'route-tooltip',
         })
+        .addTo(routeLayer)
+
+      // Start (filled) and end (ringed) markers anchor the route ends.
+      const start = latlngs[0]
+      const end = latlngs[latlngs.length - 1]
+      L.circleMarker(start, { radius: 7, color: '#ffffff', weight: 3, fillColor: SAFE, fillOpacity: 1 })
+        .bindTooltip('Route start', { direction: 'top' })
+        .addTo(routeLayer)
+      L.circleMarker(end, { radius: 8, color: SAFE, weight: 4, fillColor: '#ffffff', fillOpacity: 1 })
+        .bindTooltip('Route end', { direction: 'top' })
         .addTo(routeLayer)
     },
     destroy() {
