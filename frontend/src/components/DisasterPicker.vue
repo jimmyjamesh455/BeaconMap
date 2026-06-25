@@ -13,7 +13,7 @@ function onChange(event: Event) {
 
 <template>
   <div class="picker">
-    <label v-if="activeId">
+    <label v-if="activeId" class="picker-field">
       Disaster
       <select :value="activeId" data-test="disaster-select" @change="onChange">
         <option v-for="d in disasters" :key="d.id" :value="d.id">
@@ -21,7 +21,9 @@ function onChange(event: Event) {
         </option>
       </select>
     </label>
-    <button data-test="new-disaster" @click="emit('create')">+ New</button>
-    <button v-if="activeId" class="danger" data-test="delete-disaster" @click="emit('delete')">Delete</button>
+    <div class="picker-actions">
+      <button data-test="new-disaster" @click="emit('create')">＋ New</button>
+      <button v-if="activeId" class="danger" data-test="delete-disaster" @click="emit('delete')">Delete</button>
+    </div>
   </div>
 </template>

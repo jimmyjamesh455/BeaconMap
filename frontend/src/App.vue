@@ -309,6 +309,7 @@ function onDisasterClick(id: string) {
             class="icon-btn"
             data-test="theme-toggle"
             :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
             @click="toggleTheme"
           >
             {{ theme === 'dark' ? '☀️' : '🌙' }}
@@ -394,7 +395,17 @@ function onDisasterClick(id: string) {
             {{ services.loading ? 'Loading…' : services.visible ? 'Hide emergency services' : '🚑 Show emergency services' }}
           </button>
 
-          <p class="counts">{{ hazards.hazards.length }} hazards · {{ points.points.length }} points</p>
+          <p class="counts">
+            {{ hazards.hazards.length }} hazard{{ hazards.hazards.length === 1 ? '' : 's' }}
+            · {{ points.points.length }} point{{ points.points.length === 1 ? '' : 's' }}
+          </p>
+
+          <div class="legend">
+            <span class="legend-item"><i class="dot" style="background: var(--hazard)" /> Hazard</span>
+            <span class="legend-item"><i class="dot" style="background: var(--safe)" /> Route</span>
+            <span class="legend-item"><i class="dot" style="background: var(--coord)" /> Coordination</span>
+            <span class="legend-item"><i class="dot" style="background: var(--beacon)" /> Services</span>
+          </div>
         </template>
 
         <p v-if="modeHintText" class="mode-hint">{{ modeHintText }}</p>
@@ -406,6 +417,7 @@ function onDisasterClick(id: string) {
       :class="{ collapsed: uiHidden }"
       data-test="panel-toggle"
       :title="uiHidden ? 'Show the panel' : 'Hide the panel'"
+      :aria-label="uiHidden ? 'Show the panel' : 'Hide the panel'"
       @click="uiHidden = !uiHidden"
     >
       {{ uiHidden ? '▶' : '◀' }}
@@ -515,9 +527,13 @@ body { margin: 0; font-family: var(--body); }
 }
 .panel-toggle:hover { border-color: var(--coord); }
 .panel-toggle.collapsed { left: 0; }
-.picker { display: flex; gap: 8px; align-items: end; margin-bottom: 12px; }
-.picker select { width: 100%; }
+.picker { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.picker-field { margin: 0; }
+.picker-field select { width: 100%; }
+.picker-actions { display: flex; gap: 8px; }
+.picker-actions button { flex: 1; white-space: nowrap; }
 .toolbar { display: flex; gap: 8px; margin: 12px 0; }
+.toolbar button { flex: 1; white-space: nowrap; }
 
 button {
   background: var(--steel2); color: var(--text); border: 1px solid var(--line);
@@ -527,6 +543,9 @@ button {
 button:hover { border-color: var(--coord); }
 button.active { background: var(--beacon); border-color: var(--beacon); color: var(--ink); font-weight: 600; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--coord); outline-offset: 1px;
+}
 button.danger { background: transparent; border-color: var(--hazard); color: #fca5a5; }
 button.danger:hover { background: var(--hazard); color: #fff; }
 /* Primary action (form submit) carries the beacon. */
@@ -550,6 +569,14 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
 .hint { font-size: 0.8rem; color: var(--dim); }
 .route-summary { color: var(--safe); font-size: 0.8rem; }
 .error { color: var(--hazard); font-size: 0.85rem; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+  font-family: var(--mono); font-size: 0.72rem; color: var(--mute);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 
 .banners { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
 .banner {
