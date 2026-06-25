@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { CreateCoordinationPoint, CreateDisaster, CreateHazard, LatLng } from './api/types'
 import type { MapClick, MapMarkerClick } from './map/MapAdapter'
@@ -69,6 +69,15 @@ function toggleTheme() {
 const hasActive = computed(() => active.value !== null)
 
 onMounted(() => withServerError(() => disasters.load()))
+
+// When hazards change while a route is displayed (e.g. one placed on top of the route), recompute
+// it so it bends around the new danger zone. Watches the set's identity (add/remove/edit).
+watch(
+  () => hazards.hazards.map((h) => `${h.id}:${h.radiusMeters}:${h.lat}:${h.lng}`).join('|'),
+  () => {
+    if (routeStart.value && routeEnd.value && route.route) void tryRoute()
+  },
+)
 
 async function ensureHub(disasterId: string) {
   const handlers = {

@@ -44,6 +44,24 @@ test('delete a hazard from the map', async ({ page }) => {
   await expect(page.locator('.hazard-div-icon')).toHaveCount(0)
 })
 
+test('hovering a hazard shows its type and danger radius', async ({ page }) => {
+  const hazard = {
+    id: 'h1', disasterId: disaster.id, type: 'Fire', lat: 51.51, lng: -0.12,
+    radiusMeters: 250, description: null, createdAtUtc: '2026-01-01T00:00:00Z',
+  }
+  await page.route('**/api/disasters', (r) => r.fulfill({ json: [disaster] }))
+  await page.route('**/api/disasters/*/hazards', (r) => r.fulfill({ json: [hazard] }))
+  await page.route('**/api/disasters/*/coordination-points', (r) => r.fulfill({ json: [] }))
+  await page.route('**/hubs/**', (r) => r.abort())
+
+  await page.goto('/')
+  await page.getByText(disaster.name).click()
+
+  await page.locator('.hazard-div-icon').hover()
+  const tooltip = page.locator('.leaflet-tooltip', { hasText: 'Fire' })
+  await expect(tooltip).toContainText('250 m radius')
+})
+
 test('no disaster dropdown until one is selected; clicking a label selects it', async ({ page }) => {
   await page.route('**/api/disasters', (r) => r.fulfill({ json: [disaster] }))
   await stubScopes(page)

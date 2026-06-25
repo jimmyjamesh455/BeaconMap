@@ -187,7 +187,8 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
           fillOpacity: 0.2,
         }).addTo(hazardLayer)
         const meta = hazardInfo(h.type)
-        const label = h.description ? `${meta.label} — ${h.description}` : meta.label
+        const base = `${meta.label} · ${Math.round(h.radiusMeters)} m radius`
+        const label = h.description ? `${base} — ${h.description}` : base
         pointMarker('hazard', h.id, h.lat, h.lng, emojiIcon(meta.emoji, 'hazard-div-icon'), label)
           .addTo(hazardLayer)
       }
