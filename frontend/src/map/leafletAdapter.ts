@@ -56,11 +56,26 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
   let markerClickHandler: ((marker: MapMarkerClick) => void) | null = null
   let disasterClickHandler: ((disasterId: string) => void) | null = null
 
+  // Keep the world filling the container: raise the minimum zoom to the level at which the world
+  // covers the viewport, so widening the map (e.g. hiding the side panel) never leaves blank
+  // space. Zoom in if we're currently below that.
+  function coverViewport() {
+    const coverZoom = Math.max(2, map.getBoundsZoom(worldBounds, true))
+    if (map.getMinZoom() !== coverZoom) map.setMinZoom(coverZoom)
+    if (map.getZoom() < coverZoom) map.setZoom(coverZoom)
+  }
+
   // The map is created inside a flex container that may not have its final size yet; recompute
   // Leaflet's dimensions once laid out and on resize, else tiles/overlays render blank.
-  const resizeObserver = new ResizeObserver(() => map.invalidateSize())
+  const resizeObserver = new ResizeObserver(() => {
+    map.invalidateSize()
+    coverViewport()
+  })
   resizeObserver.observe(element)
-  requestAnimationFrame(() => map.invalidateSize())
+  requestAnimationFrame(() => {
+    map.invalidateSize()
+    coverViewport()
+  })
 
   function updateCityVisibility() {
     const show = map.getZoom() <= MAX_CITY_ZOOM
