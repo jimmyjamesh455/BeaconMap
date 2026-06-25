@@ -455,6 +455,9 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
 
 /* Leaflet surfaces themed to the instrument. */
 .leaflet-container { background: var(--ink); font-family: var(--body); }
+/* Darken the (light) OSM tiles into the brand Ink canvas. Only tiles are filtered — markers,
+   routes and hazard circles live in other panes and keep their real colours. */
+.leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.75); }
 .leaflet-control-attribution { background: rgba(7, 21, 31, 0.7) !important; color: var(--mute) !important; }
 .leaflet-control-attribution a { color: var(--dim) !important; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--steel); color: var(--text); }

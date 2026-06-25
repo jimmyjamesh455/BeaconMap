@@ -34,11 +34,11 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     maxBoundsViscosity: 1,
   }).setView([20, 0], 2)
 
-  // Dark "instrument" basemap (brand: Ink canvas) from CARTO.
-  L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20,
+  // OpenStreetMap tiles (reliably reachable), darkened via CSS to the brand Ink canvas
+  // (.leaflet-tile filter in App.vue). A dark tile CDN (CARTO) isn't always resolvable.
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
     noWrap: true,
   }).addTo(map)
 
