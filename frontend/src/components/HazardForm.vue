@@ -7,17 +7,21 @@ const props = defineProps<{ location: LatLng }>()
 const emit = defineEmits<{ submit: [CreateHazard]; cancel: [] }>()
 
 const hazardTypes: HazardType[] = ['BlockedRoad', 'UnsafeRoute', 'Fire', 'DamagedBuilding', 'Other']
+const MAX_RADIUS = 5000
 
 const type = ref<HazardType>('Fire')
 const radiusMeters = ref<number>(100)
 const description = ref<string>('')
 
 function submit() {
+  // Clamp to a sane range; the backend enforces the same 1–5000 m limit.
+  const radius = Math.min(MAX_RADIUS, Math.max(1, radiusMeters.value || 1))
+  radiusMeters.value = radius
   emit('submit', {
     type: type.value,
     lat: props.location.lat,
     lng: props.location.lng,
-    radiusMeters: radiusMeters.value,
+    radiusMeters: radius,
     description: description.value.trim() || null,
   })
 }
@@ -33,8 +37,8 @@ function submit() {
       </select>
     </label>
     <label>
-      Danger radius (m)
-      <input v-model.number="radiusMeters" type="number" min="1" data-test="hazard-radius" />
+      Danger radius (m) — max 5000
+      <input v-model.number="radiusMeters" type="number" min="1" max="5000" data-test="hazard-radius" />
     </label>
     <label>
       Description

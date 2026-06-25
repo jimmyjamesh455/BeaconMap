@@ -56,6 +56,19 @@ public class HazardEndpointsTests
     }
 
     [Fact]
+    public async Task Post_hazard_with_radius_over_5000_returns_400()
+    {
+        using var factory = new TestApiFactory();
+        var client = factory.CreateClient();
+        var disasterId = await ApiTestHelpers.CreateDisasterAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/disasters/{disasterId}/hazards", ValidHazard(radius: 6000), TestApiFactory.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Post_hazard_returns_404_when_disaster_missing()
     {
         using var factory = new TestApiFactory();

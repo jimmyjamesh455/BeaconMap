@@ -63,6 +63,16 @@ describe('HazardForm', () => {
       description: 'bridge out',
     })
   })
+
+  it('clamps the danger radius to the 5000 m maximum', async () => {
+    const wrapper = mount(HazardForm, { props: { location: { lat: 51.5, lng: -0.12 } } })
+
+    await wrapper.find('[data-test=hazard-radius]').setValue(9999)
+    await wrapper.find('form').trigger('submit')
+
+    const payload = wrapper.emitted('submit')?.[0][0] as { radiusMeters: number }
+    expect(payload.radiusMeters).toBe(5000)
+  })
 })
 
 describe('MapView', () => {

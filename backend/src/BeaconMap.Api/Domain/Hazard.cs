@@ -8,6 +8,7 @@ namespace BeaconMap.Api.Domain;
 public class Hazard
 {
     public const double DefaultRadiusMeters = 100;
+    public const double MaxRadiusMeters = 5000;
 
     public Guid Id { get; set; }
     public Guid DisasterId { get; set; }

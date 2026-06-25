@@ -34,9 +34,9 @@ public static class HazardEndpoints
                 return Results.NotFound();
             }
 
-            if (request.RadiusMeters is <= 0)
+            if (request.RadiusMeters is <= 0 or > Hazard.MaxRadiusMeters)
             {
-                return Results.BadRequest(new { error = "RadiusMeters must be greater than 0." });
+                return Results.BadRequest(new { error = "RadiusMeters must be between 1 and 5000." });
             }
 
             var hazard = new Hazard
@@ -61,9 +61,9 @@ public static class HazardEndpoints
 
         group.MapPut("/{id:guid}", async (Guid disasterId, Guid id, UpdateHazardRequest request, AppDbContext db, IMapNotifier notifier) =>
         {
-            if (request.RadiusMeters is <= 0)
+            if (request.RadiusMeters is <= 0 or > Hazard.MaxRadiusMeters)
             {
-                return Results.BadRequest(new { error = "RadiusMeters must be greater than 0." });
+                return Results.BadRequest(new { error = "RadiusMeters must be between 1 and 5000." });
             }
 
             var hazard = await db.Hazards
