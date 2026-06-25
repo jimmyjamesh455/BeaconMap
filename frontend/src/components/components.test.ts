@@ -4,8 +4,8 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import HazardForm from './HazardForm.vue'
 import MapView from './MapView.vue'
-import type { MapAdapter, MapClick } from '../map/MapAdapter'
-import type { Hazard, LatLng } from '../api/types'
+import type { MapAdapter, MapClick, MapMarkerClick } from '../map/MapAdapter'
+import type { Hazard } from '../api/types'
 import { useHazardsStore } from '../stores/hazards'
 
 function hazard(id: string): Hazard {
@@ -14,21 +14,26 @@ function hazard(id: string): Hazard {
 
 type FakeAdapter = MapAdapter & {
   clickHandler: ((c: MapClick) => void) | null
-  markerClickHandler: ((p: LatLng) => void) | null
+  markerClickHandler: ((m: MapMarkerClick) => void) | null
+  disasterClickHandler: ((id: string) => void) | null
 }
 
 function fakeAdapter(): FakeAdapter {
   const fake: FakeAdapter = {
     clickHandler: null,
     markerClickHandler: null,
+    disasterClickHandler: null,
     onClick(handler: (c: MapClick) => void) { fake.clickHandler = handler },
-    onMarkerClick(handler: (p: LatLng) => void) { fake.markerClickHandler = handler },
+    onMarkerClick(handler: (m: MapMarkerClick) => void) { fake.markerClickHandler = handler },
+    onDisasterClick(handler: (id: string) => void) { fake.disasterClickHandler = handler },
+    getViewport: () => ({ bounds: { south: 0, west: 0, north: 1, east: 1 }, zoom: 13 }),
     fitTo: vi.fn(),
     drawDisasters: vi.fn(),
     drawDraftArea: vi.fn(),
     drawHazards: vi.fn(),
     drawCoordinationPoints: vi.fn(),
     drawEmergencyServices: vi.fn(),
+    drawCities: vi.fn(),
     drawRoute: vi.fn(),
     destroy: vi.fn(),
   }
@@ -87,8 +92,18 @@ describe('MapView', () => {
     const fake = fakeAdapter()
     const wrapper = mount(MapView, { props: { adapterFactory: () => fake } })
 
-    fake.markerClickHandler!({ lat: 51.5, lng: -0.12 })
+    const marker: MapMarkerClick = { kind: 'hazard', id: 'h1', name: 'Fire', lat: 51.5, lng: -0.12, x: 5, y: 6 }
+    fake.markerClickHandler!(marker)
 
-    expect(wrapper.emitted('marker-click')?.[0][0]).toEqual({ lat: 51.5, lng: -0.12 })
+    expect(wrapper.emitted('marker-click')?.[0][0]).toEqual(marker)
+  })
+
+  it('emits disaster-click when the adapter reports a disaster click', async () => {
+    const fake = fakeAdapter()
+    const wrapper = mount(MapView, { props: { adapterFactory: () => fake } })
+
+    fake.disasterClickHandler!('d9')
+
+    expect(wrapper.emitted('disaster-click')?.[0][0]).toBe('d9')
   })
 })

@@ -55,10 +55,10 @@ test('left-click offers an add menu, and adding a hazard drops an icon on the ma
   await page.route('**/hubs/**', (route) => route.abort())
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.getByText(disaster.name).click() // select by clicking its label on the map
 
   // Left-click the map → context menu with add options.
-  await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+  await page.locator('.leaflet-container').click({ position: { x: 480, y: 360 } })
   await expect(page.locator('[data-test=map-context-menu]')).toBeVisible()
 
   // Choose "Add hazard" → the hazard form opens; save it.
@@ -82,9 +82,9 @@ test('adding a coordination point drops an icon on the map', async ({ page }) =>
   await page.route('**/hubs/**', (route) => route.abort())
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.getByText(disaster.name).click() // select by clicking its label on the map
 
-  await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+  await page.locator('.leaflet-container').click({ position: { x: 480, y: 360 } })
   await page.locator('[data-test=menu-add-point]').click()
   await page.locator('[data-test=point-name]').fill('Command HQ')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -102,7 +102,7 @@ test('a disaster can be deleted', async ({ page }) => {
   page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.getByText(disaster.name).click() // select by clicking its label on the map
   await expect(page.locator('.leaflet-tooltip.disaster-label')).toHaveCount(1)
 
   await page.locator('[data-test=delete-disaster]').click()
@@ -126,7 +126,7 @@ test('a route can start at a coordination point', async ({ page }) => {
   await page.route('**/hubs/**', (route) => route.abort())
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.getByText(disaster.name).click() // select by clicking its label on the map
   await expect(page.locator('.point-div-icon')).toHaveCount(1)
 
   await page.getByRole('button', { name: 'Set start' }).click()
@@ -143,8 +143,8 @@ test('type options read as words, not run-on enum names', async ({ page }) => {
   await page.route('**/hubs/**', (route) => route.abort())
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
-  await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+  await page.getByText(disaster.name).click() // select by clicking its label on the map
+  await page.locator('.leaflet-container').click({ position: { x: 480, y: 360 } })
   await page.locator('[data-test=menu-add-hazard]').click()
 
   const options = (await page.locator('[data-test=hazard-type] option').allInnerTexts()).join(' ')

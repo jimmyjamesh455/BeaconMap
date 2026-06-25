@@ -38,8 +38,8 @@ test.beforeEach(async ({ page }) => {
 test('computes a route, draws it, and shows distance + drive time on hover', async ({ page }) => {
   await page.goto('/')
 
-  // Select the (stubbed) disaster to load its map.
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  // Select the (stubbed) disaster by clicking its label on the map.
+  await page.getByText(disaster.name).click()
 
   // Set start and end by choosing the mode then clicking the map.
   const map = page.locator('.leaflet-container')

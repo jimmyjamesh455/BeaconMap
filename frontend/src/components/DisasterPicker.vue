@@ -13,10 +13,9 @@ function onChange(event: Event) {
 
 <template>
   <div class="picker">
-    <label>
+    <label v-if="activeId">
       Disaster
-      <select :value="activeId ?? ''" data-test="disaster-select" @change="onChange">
-        <option value="" disabled>Select a disaster…</option>
+      <select :value="activeId" data-test="disaster-select" @change="onChange">
         <option v-for="d in disasters" :key="d.id" :value="d.id">
           {{ disasterInfo(d.type).emoji }} {{ d.name }} ({{ disasterInfo(d.type).label }})
         </option>

@@ -1,7 +1,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { CoordinationPoint, Disaster, EmergencyService, Hazard, LatLng, Route } from '../api/types'
-import type { MapAdapter } from './MapAdapter'
+import type { CoordinationPoint, Disaster, EmergencyService, Hazard, Route } from '../api/types'
+import type { MapAdapter, MapMarkerClick, MapViewport } from './MapAdapter'
+import type { City } from '../data/cities'
 import { formatRouteSummary } from '../format'
 import { disasterInfo, hazardInfo, pointInfo, serviceInfo } from '../icons'
 
@@ -11,6 +12,8 @@ const SAFE = '#16B786'   // safe routes
 const COORD = '#1FA9D6'  // coordination / selection
 const BEACON = '#F6A623' // signal / draft outline
 const STEEL_MUTE = '#6E8799'
+
+const MAX_CITY_ZOOM = 5 // city labels only help when zoomed out; the basemap shows them in close
 
 // Emoji in a fixed-size circular chip. Being an HTML overlay, it stays the same on-screen size
 // at every zoom level (it is not scaled with the map like geographic shapes).
@@ -34,14 +37,15 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     maxBoundsViscosity: 1,
   }).setView([20, 0], 2)
 
-  // OpenStreetMap tiles (reliably reachable), darkened via CSS to the brand Ink canvas
-  // (.leaflet-tile filter in App.vue). A dark tile CDN (CARTO) isn't always resolvable.
+  // OpenStreetMap tiles (reliably reachable), darkened via CSS to the brand Ink canvas in dark
+  // mode (.leaflet-tile filter in App.vue). Reliable English-label / dark tile CDNs need a key.
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19,
     noWrap: true,
   }).addTo(map)
 
+  const cityLayer = L.layerGroup()
   const disasterLayer = L.layerGroup().addTo(map)
   const draftLayer = L.layerGroup().addTo(map)
   const hazardLayer = L.layerGroup().addTo(map)
@@ -49,7 +53,8 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
   const serviceLayer = L.layerGroup().addTo(map)
   const routeLayer = L.layerGroup().addTo(map)
 
-  let markerClickHandler: ((point: LatLng) => void) | null = null
+  let markerClickHandler: ((marker: MapMarkerClick) => void) | null = null
+  let disasterClickHandler: ((disasterId: string) => void) | null = null
 
   // The map is created inside a flex container that may not have its final size yet; recompute
   // Leaflet's dimensions once laid out and on resize, else tiles/overlays render blank.
@@ -57,11 +62,24 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
   resizeObserver.observe(element)
   requestAnimationFrame(() => map.invalidateSize())
 
-  function pointMarker(lat: number, lng: number, icon: L.DivIcon, label: string): L.Marker {
-    // Name shows on hover (tooltip), leaving the click free to snap a route to this marker.
+  function updateCityVisibility() {
+    const show = map.getZoom() <= MAX_CITY_ZOOM
+    if (show && !map.hasLayer(cityLayer)) {
+      cityLayer.addTo(map)
+    } else if (!show && map.hasLayer(cityLayer)) {
+      map.removeLayer(cityLayer)
+    }
+  }
+  map.on('zoomend', updateCityVisibility)
+
+  function pointMarker(
+    kind: MapMarkerClick['kind'], id: string, lat: number, lng: number, icon: L.DivIcon, label: string,
+  ): L.Marker {
+    // Name shows on hover (tooltip), leaving the click free to snap a route / open the menu.
     return L.marker([lat, lng], { icon })
       .bindTooltip(label, { direction: 'top' })
-      .on('click', () => markerClickHandler?.({ lat, lng }))
+      .on('click', (e: L.LeafletMouseEvent) =>
+        markerClickHandler?.({ kind, id, name: label, lat, lng, x: e.containerPoint.x, y: e.containerPoint.y }))
   }
 
   return {
@@ -72,10 +90,20 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     onMarkerClick(handler) {
       markerClickHandler = handler
     },
+    onDisasterClick(handler) {
+      disasterClickHandler = handler
+    },
     fitTo(points) {
       if (points.length === 0) return
       const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]))
       map.fitBounds(bounds, { padding: [30, 30] })
+    },
+    getViewport(): MapViewport {
+      const b = map.getBounds()
+      return {
+        bounds: { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+        zoom: map.getZoom(),
+      }
     },
     drawDisasters(disasters: Disaster[], selectedId: string | null) {
       disasterLayer.clearLayers()
@@ -83,7 +111,8 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
         if (d.area.length === 0) continue
         const selected = d.id === selectedId
         const meta = disasterInfo(d.type)
-        // Outlines are non-interactive so map clicks (to add hazards/points) pass through.
+        // The selected outline is click-through (so clicks inside place hazards/points); other
+        // outlines are clickable to select that disaster.
         const polygon = L.polygon(
           d.area.map((p) => [p.lat, p.lng] as [number, number]),
           {
@@ -92,14 +121,22 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
             opacity: selected ? 0.95 : 0.8,
             fillOpacity: selected ? 0.12 : 0.05,
             dashArray: selected ? undefined : '6 6',
-            interactive: false,
+            interactive: !selected,
+            className: 'disaster-area',
           },
         ).addTo(disasterLayer)
 
+        if (!selected) {
+          polygon.on('click', () => disasterClickHandler?.(d.id))
+        }
+
+        // The label is interactive on non-selected disasters so clicking the name also selects
+        // them; on the selected disaster it's click-through (so clicks place items / deselect).
         polygon.bindTooltip(`${meta.emoji} ${d.name} — ${meta.label}`, {
           permanent: true,
           direction: 'center',
-          className: 'disaster-label',
+          className: selected ? 'disaster-label selected' : 'disaster-label',
+          interactive: !selected,
         })
       }
     },
@@ -129,8 +166,8 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
           fillOpacity: 0.2,
         }).addTo(hazardLayer)
         const meta = hazardInfo(h.type)
-        L.marker([h.lat, h.lng], { icon: emojiIcon(meta.emoji, 'hazard-div-icon') })
-          .bindPopup(`<b>${meta.label}</b><br>${h.description ?? ''}`)
+        const label = h.description ? `${meta.label} — ${h.description}` : meta.label
+        pointMarker('hazard', h.id, h.lat, h.lng, emojiIcon(meta.emoji, 'hazard-div-icon'), label)
           .addTo(hazardLayer)
       }
     },
@@ -138,7 +175,7 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       pointLayer.clearLayers()
       for (const p of points) {
         const meta = pointInfo(p.type)
-        pointMarker(p.lat, p.lng, emojiIcon(meta.emoji, 'point-div-icon'),
+        pointMarker('point', p.id, p.lat, p.lng, emojiIcon(meta.emoji, 'point-div-icon'),
           `${p.name} — ${meta.label}`).addTo(pointLayer)
       }
     },
@@ -146,9 +183,20 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       serviceLayer.clearLayers()
       for (const s of services) {
         const meta = serviceInfo(s.kind)
-        pointMarker(s.lat, s.lng, emojiIcon(meta.emoji, 'service-div-icon'),
+        pointMarker('service', s.id, s.lat, s.lng, emojiIcon(meta.emoji, 'service-div-icon'),
           `${s.name} — ${meta.label}`).addTo(serviceLayer)
       }
+    },
+    drawCities(cities: City[]) {
+      cityLayer.clearLayers()
+      for (const c of cities) {
+        L.circleMarker([c.lat, c.lng], {
+          radius: 3, color: '#B9CCDB', fillColor: '#B9CCDB', fillOpacity: 1, weight: 1, interactive: false,
+        })
+          .bindTooltip(c.name, { permanent: true, direction: 'right', className: 'city-label' })
+          .addTo(cityLayer)
+      }
+      updateCityVisibility()
     },
     drawRoute(route: Route | null) {
       routeLayer.clearLayers()

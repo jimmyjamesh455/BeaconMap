@@ -29,7 +29,7 @@ test('loads and shows emergency services on demand', async ({ page }) => {
     }))
 
   await page.goto('/')
-  await page.locator('[data-test=disaster-select]').selectOption(disaster.id)
+  await page.getByText(disaster.name).click()
 
   // Nothing until requested.
   await expect(page.locator('.service-div-icon')).toHaveCount(0)
@@ -43,5 +43,24 @@ test('loads and shows emergency services on demand', async ({ page }) => {
 
   // Toggling again hides them.
   await page.locator('[data-test=toggle-services]').click()
+  await expect(page.locator('.service-div-icon')).toHaveCount(0)
+})
+
+test('asks the user to zoom in when the view is too wide', async ({ page }) => {
+  // A large disaster area → fit zooms out below the services threshold.
+  const wide = {
+    ...disaster,
+    area: [{ lat: 50, lng: -5 }, { lat: 55, lng: -5 }, { lat: 55, lng: 2 }, { lat: 50, lng: 2 }],
+  }
+  await page.route('**/api/disasters', (route) => route.fulfill({ json: [wide] }))
+  await page.route('**/api/disasters/*/hazards', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/disasters/*/coordination-points', (route) => route.fulfill({ json: [] }))
+  await page.route('**/hubs/**', (route) => route.abort())
+
+  await page.goto('/')
+  await page.getByText(wide.name).click()
+  await page.locator('[data-test=toggle-services]').click()
+
+  await expect(page.locator('[data-test=notification]')).toContainText('Zoom in')
   await expect(page.locator('.service-div-icon')).toHaveCount(0)
 })

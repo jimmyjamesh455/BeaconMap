@@ -2,14 +2,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { CreateCoordinationPoint, CreateDisaster, CreateHazard, LatLng } from './api/types'
-import type { MapClick } from './map/MapAdapter'
+import type { MapClick, MapMarkerClick } from './map/MapAdapter'
+import { applyTheme, persistTheme, resolveInitialTheme, type Theme } from './theme'
+import { pointInPolygon } from './geo'
 import { useDisastersStore } from './stores/disasters'
 import { useHazardsStore } from './stores/hazards'
 import { useCoordinationPointsStore } from './stores/coordinationPoints'
 import { useRouteStore } from './stores/route'
 import { useNotificationsStore } from './stores/notifications'
 import { useEmergencyServicesStore } from './stores/emergencyServices'
-import type { Bounds } from './api/overpass'
 import { createMapHub } from './realtime/mapHub'
 import DisasterPicker from './components/DisasterPicker.vue'
 import DisasterForm from './components/DisasterForm.vue'
@@ -49,8 +50,18 @@ const draftArea = ref<LatLng[]>([])
 const routeStart = ref<LatLng | null>(null)
 const routeEnd = ref<LatLng | null>(null)
 const contextMenu = ref<MapClick | null>(null)
+const markerMenu = ref<{ kind: 'hazard' | 'point'; id: string; name: string; x: number; y: number } | null>(null)
 // Collapsed by default on phones so the map gets the screen; open on larger screens.
 const controlsOpen = ref(typeof window === 'undefined' || window.innerWidth > 720)
+const uiHidden = ref(false)
+const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
+
+const theme = ref<Theme>(resolveInitialTheme())
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  applyTheme(theme.value)
+  persistTheme(theme.value)
+}
 
 const hasActive = computed(() => active.value !== null)
 
@@ -93,6 +104,7 @@ function resetTransient() {
   routeStart.value = null
   routeEnd.value = null
   contextMenu.value = null
+  markerMenu.value = null
 }
 
 function startNewDisaster() {
@@ -104,6 +116,7 @@ function setMode(next: Mode) {
   mode.value = mode.value === next ? null : next
   pendingLocation.value = null
   contextMenu.value = null
+  markerMenu.value = null
 }
 
 function onMapClick(click: MapClick) {
@@ -126,9 +139,24 @@ function onMapClick(click: MapClick) {
       void tryRoute()
       break
     default:
-      // No active placing mode: offer a quick "add" menu at the clicked spot.
-      if (hasActive.value) contextMenu.value = click
+      // No placing mode: inside the selected disaster, offer the add menu; clicking empty space
+      // outside it deselects the disaster.
+      if (!hasActive.value) break
+      if (active.value && pointInPolygon(point, active.value.area)) {
+        contextMenu.value = click
+      } else {
+        deselectDisaster()
+      }
   }
+}
+
+function deselectDisaster() {
+  disasters.select(null)
+  hazards.clear()
+  points.clear()
+  route.clear()
+  services.clear()
+  resetTransient()
 }
 
 function menuLocation(): LatLng {
@@ -217,23 +245,27 @@ const modeHintText = computed(() => {
   }
 })
 
-function areaBounds(area: LatLng[]): Bounds {
-  const lats = area.map((p) => p.lat)
-  const lngs = area.map((p) => p.lng)
-  return { south: Math.min(...lats), north: Math.max(...lats), west: Math.min(...lngs), east: Math.max(...lngs) }
-}
-
 async function toggleServices() {
-  if (!active.value) return
+  if (services.visible) {
+    services.hide()
+    return
+  }
+  const viewport = mapViewRef.value?.getViewport()
+  if (!viewport) return
+  if (viewport.zoom < 12) {
+    notifications.notify('Zoom in to load emergency services for the area in view.')
+    return
+  }
   try {
-    await services.toggle(areaBounds(active.value.area))
+    await services.show(viewport.bounds)
   } catch {
     notifications.notify('Could not load emergency services from OpenStreetMap. Please try again.')
   }
 }
 
-// Routes can start/end at a coordination point or emergency-service marker (exact location).
-function onMarkerClick(point: LatLng) {
+// Routes can start/end at any placed marker (exact location); otherwise offer to delete it.
+function onMarkerClick(m: MapMarkerClick) {
+  const point: LatLng = { lat: m.lat, lng: m.lng }
   if (mode.value === 'route-start') {
     routeStart.value = point
     mode.value = 'route-end'
@@ -241,25 +273,57 @@ function onMarkerClick(point: LatLng) {
     routeEnd.value = point
     mode.value = null
     void tryRoute()
+  } else if (m.kind === 'hazard' || m.kind === 'point') {
+    markerMenu.value = { kind: m.kind, id: m.id, name: m.name, x: m.x, y: m.y }
+    contextMenu.value = null
   }
+}
+
+async function deleteMarker() {
+  const m = markerMenu.value
+  if (!m || !activeId.value) return
+  if (m.kind === 'hazard') {
+    await withServerError(() => hazards.remove(activeId.value!, m.id))
+  } else {
+    await withServerError(() => points.remove(activeId.value!, m.id))
+  }
+  markerMenu.value = null
+}
+
+// Clicking a non-selected disaster selects it (and the activeId watcher zooms to it).
+function onDisasterClick(id: string) {
+  if (id !== activeId.value) void selectDisaster(id)
 }
 </script>
 
 <template>
   <div class="app">
-    <aside class="sidebar">
+    <aside v-show="!uiHidden" class="sidebar">
       <div class="sidebar-header">
         <div class="brand">
           <img class="emblem" src="/beaconmap-emblem.svg" alt="" aria-hidden="true" />
           <h1>Beacon<span class="accent">Map</span></h1>
         </div>
-        <button
-          class="controls-toggle"
-          data-test="controls-toggle"
-          @click="controlsOpen = !controlsOpen"
-        >
-          {{ controlsOpen ? 'Hide ▲' : 'Controls ▾' }}
-        </button>
+        <div class="header-actions">
+          <button
+            class="icon-btn"
+            data-test="theme-toggle"
+            :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggleTheme"
+          >
+            {{ theme === 'dark' ? '☀️' : '🌙' }}
+          </button>
+          <button class="icon-btn" data-test="hide-ui" title="Hide the panel" @click="uiHidden = true">
+            ⤧
+          </button>
+          <button
+            class="controls-toggle"
+            data-test="controls-toggle"
+            @click="controlsOpen = !controlsOpen"
+          >
+            {{ controlsOpen ? 'Hide ▲' : 'Controls ▾' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="notifications.messages.length" class="banners">
@@ -282,6 +346,10 @@ function onMarkerClick(point: LatLng) {
           @create="startNewDisaster"
           @delete="deleteActiveDisaster"
         />
+
+        <p v-if="!hasActive && mode !== 'new-disaster'" class="hint">
+          Select a disaster by clicking it on the map, or create one with “+ New”.
+        </p>
 
         <DisasterForm
           v-if="mode === 'new-disaster'"
@@ -337,7 +405,17 @@ function onMarkerClick(point: LatLng) {
     </aside>
 
     <main class="map-pane">
-      <MapView :draft-area="draftArea" @map-click="onMapClick" @marker-click="onMarkerClick" />
+      <button v-if="uiHidden" class="show-ui" data-test="show-ui" title="Show the panel" @click="uiHidden = false">
+        ☰ Panel
+      </button>
+
+      <MapView
+        ref="mapViewRef"
+        :draft-area="draftArea"
+        @map-click="onMapClick"
+        @marker-click="onMarkerClick"
+        @disaster-click="onDisasterClick"
+      />
 
       <div
         v-if="contextMenu"
@@ -349,6 +427,19 @@ function onMarkerClick(point: LatLng) {
         <button data-test="menu-add-point" @click="addPointHere">🚩 Add coordination point</button>
         <button data-test="menu-start-route" @click="startRouteHere">🟢 Start route here</button>
         <button class="menu-cancel" @click="contextMenu = null">Cancel</button>
+      </div>
+
+      <div
+        v-if="markerMenu"
+        class="context-menu"
+        :style="{ left: `${markerMenu.x}px`, top: `${markerMenu.y}px` }"
+        data-test="marker-menu"
+      >
+        <div class="menu-title">{{ markerMenu.name }}</div>
+        <button class="menu-danger" data-test="marker-delete" @click="deleteMarker">
+          🗑 Delete {{ markerMenu.kind === 'hazard' ? 'hazard' : 'coordination point' }}
+        </button>
+        <button class="menu-cancel" @click="markerMenu = null">Cancel</button>
       </div>
     </main>
   </div>
@@ -376,6 +467,19 @@ function onMarkerClick(point: LatLng) {
   --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 }
 
+/* Light theme: legend colours (beacon/hazard/safe/coord) stay; surfaces invert. */
+:root[data-theme="light"] {
+  --ink: #FFFFFF;
+  --ground: #E7EDF2;
+  --steel: #FFFFFF;
+  --steel2: #F2F6FA;
+  --line: #CBD8E2;
+  --line-soft: #DCE6EE;
+  --mute: #5B7185;
+  --text: #0B1B2B;
+  --dim: #3C5266;
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--body); }
 .app { display: flex; height: 100vh; }
@@ -389,10 +493,17 @@ body { margin: 0; font-family: var(--body); }
 .emblem { width: 26px; height: 30px; display: block; }
 .sidebar h1 { font-family: var(--display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.02em; margin: 0; }
 .accent { color: var(--beacon); }
+.header-actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn { padding: 4px 8px; font-size: 0.95rem; line-height: 1; }
 .controls-toggle { display: none; }
 
 .map-pane { flex: 1; position: relative; }
 .map { position: absolute; inset: 0; background: var(--ink); }
+.show-ui {
+  position: absolute; z-index: 1000; top: 12px; left: 12px;
+  background: var(--steel); border: 1px solid var(--line); color: var(--text);
+  box-shadow: 0 4px 14px rgba(4, 14, 22, 0.5);
+}
 .picker { display: flex; gap: 8px; align-items: end; margin-bottom: 12px; }
 .picker select { width: 100%; }
 .toolbar { display: flex; gap: 8px; margin: 12px 0; }
@@ -450,14 +561,26 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
 .context-menu button:hover { background: var(--steel2); border-color: var(--steel2); }
 .context-menu .menu-cancel { color: var(--mute); border-top: 1px solid var(--line); }
 .context-menu .menu-cancel:hover { background: var(--steel2); }
+.context-menu .menu-title { padding: 9px 12px; font-size: 0.8rem; color: var(--dim); font-weight: 600; border-bottom: 1px solid var(--line); }
+.context-menu .menu-danger { color: #e5484d; }
+.context-menu .menu-danger:hover { background: var(--hazard); color: #fff; }
 
 .services-btn { width: 100%; margin-bottom: 8px; }
 
 /* Leaflet surfaces themed to the instrument. */
 .leaflet-container { background: var(--ink); font-family: var(--body); }
-/* Darken the (light) OSM tiles into the brand Ink canvas. Only tiles are filtered — markers,
-   routes and hazard circles live in other panes and keep their real colours. */
-.leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.75); }
+/* In dark mode, darken the (light) OSM tiles into the brand Ink canvas. Only tiles are filtered
+   — markers, routes and hazard circles live in other panes and keep their real colours.
+   In light mode the tiles render normally. */
+:root[data-theme="dark"] .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.75); }
+
+/* Curated city orientation labels (low zoom only). */
+.leaflet-tooltip.city-label {
+  background: transparent; border: none; box-shadow: none; padding: 0;
+  color: var(--text); font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-shadow: 0 0 3px var(--ground), 0 0 3px var(--ground);
+}
+.leaflet-tooltip.city-label::before { display: none; }
 .leaflet-control-attribution { background: rgba(7, 21, 31, 0.7) !important; color: var(--mute) !important; }
 .leaflet-control-attribution a { color: var(--dim) !important; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--steel); color: var(--text); }
@@ -470,7 +593,10 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
 .leaflet-tooltip.disaster-label {
   background: rgba(7, 21, 31, 0.82); color: var(--text);
   border: 1px solid var(--line); box-shadow: none; font-weight: 600; font-size: 0.8rem;
+  cursor: pointer; pointer-events: auto;
 }
+/* The selected disaster's label is click-through so clicks place items / deselect. */
+.leaflet-tooltip.disaster-label.selected { pointer-events: none; cursor: default; }
 .leaflet-tooltip.disaster-label::before { display: none; }
 
 /* Map icon "chips": fixed on-screen size at every zoom; border ties each to the legend. */

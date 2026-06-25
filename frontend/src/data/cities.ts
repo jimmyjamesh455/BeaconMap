@@ -1,0 +1,52 @@
+export interface City {
+  name: string
+  lat: number
+  lng: number
+}
+
+/** A small curated set of major world cities for orientation at low zoom (English names). */
+export const majorCities: City[] = [
+  { name: 'London', lat: 51.5074, lng: -0.1278 },
+  { name: 'Paris', lat: 48.8566, lng: 2.3522 },
+  { name: 'Madrid', lat: 40.4168, lng: -3.7038 },
+  { name: 'Berlin', lat: 52.52, lng: 13.405 },
+  { name: 'Rome', lat: 41.9028, lng: 12.4964 },
+  { name: 'Moscow', lat: 55.7558, lng: 37.6173 },
+  { name: 'Istanbul', lat: 41.0082, lng: 28.9784 },
+  { name: 'Dublin', lat: 53.3498, lng: -6.2603 },
+  { name: 'Lisbon', lat: 38.7223, lng: -9.1393 },
+  { name: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
+  { name: 'Stockholm', lat: 59.3293, lng: 18.0686 },
+  { name: 'Athens', lat: 37.9838, lng: 23.7275 },
+  { name: 'Cairo', lat: 30.0444, lng: 31.2357 },
+  { name: 'Lagos', lat: 6.5244, lng: 3.3792 },
+  { name: 'Nairobi', lat: -1.2921, lng: 36.8219 },
+  { name: 'Johannesburg', lat: -26.2041, lng: 28.0473 },
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
+  { name: 'Mumbai', lat: 19.076, lng: 72.8777 },
+  { name: 'Delhi', lat: 28.6139, lng: 77.209 },
+  { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+  { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
+  { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+  { name: 'Shanghai', lat: 31.2304, lng: 121.4737 },
+  { name: 'Beijing', lat: 39.9042, lng: 116.4074 },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+  { name: 'Seoul', lat: 37.5665, lng: 126.978 },
+  { name: 'Jakarta', lat: -6.2088, lng: 106.8456 },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
+  { name: 'Melbourne', lat: -37.8136, lng: 144.9631 },
+  { name: 'Auckland', lat: -36.8485, lng: 174.7633 },
+  { name: 'New York', lat: 40.7128, lng: -74.006 },
+  { name: 'Washington', lat: 38.9072, lng: -77.0369 },
+  { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
+  { name: 'Chicago', lat: 41.8781, lng: -87.6298 },
+  { name: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+  { name: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+  { name: 'Mexico City', lat: 19.4326, lng: -99.1332 },
+  { name: 'Bogotá', lat: 4.711, lng: -74.0721 },
+  { name: 'Lima', lat: -12.0464, lng: -77.0428 },
+  { name: 'Santiago', lat: -33.4489, lng: -70.6693 },
+  { name: 'Buenos Aires', lat: -34.6037, lng: -58.3816 },
+  { name: 'São Paulo', lat: -23.5558, lng: -46.6396 },
+  { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+]

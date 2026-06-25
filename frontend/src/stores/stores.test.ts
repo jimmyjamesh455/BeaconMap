@@ -61,6 +61,19 @@ describe('hazards store live events', () => {
 
     expect(store.hazards).toHaveLength(2)
   })
+
+  it('removes a hazard locally after the API delete', async () => {
+    const deleteHazard = vi.fn().mockResolvedValue(undefined)
+    setApiClient({ deleteHazard } as unknown as ApiClient)
+    const store = useHazardsStore()
+    store.onCreated(hazard('h1'))
+    store.onCreated(hazard('h2'))
+
+    await store.remove('d1', 'h1')
+
+    expect(deleteHazard).toHaveBeenCalledWith('d1', 'h1')
+    expect(store.hazards.map((h) => h.id)).toEqual(['h2'])
+  })
 })
 
 describe('coordination points store live events', () => {
@@ -69,6 +82,19 @@ describe('coordination points store live events', () => {
     store.onCreated(point('c1'))
     store.onCreated(point('c2'))
     store.onDeleted('c1')
+    expect(store.points.map((p) => p.id)).toEqual(['c2'])
+  })
+
+  it('removes a coordination point locally after the API delete', async () => {
+    const deleteCoordinationPoint = vi.fn().mockResolvedValue(undefined)
+    setApiClient({ deleteCoordinationPoint } as unknown as ApiClient)
+    const store = useCoordinationPointsStore()
+    store.onCreated(point('c1'))
+    store.onCreated(point('c2'))
+
+    await store.remove('d1', 'c1')
+
+    expect(deleteCoordinationPoint).toHaveBeenCalledWith('d1', 'c1')
     expect(store.points.map((p) => p.id)).toEqual(['c2'])
   })
 })
