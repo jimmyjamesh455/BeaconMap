@@ -313,9 +313,6 @@ function onDisasterClick(id: string) {
           >
             {{ theme === 'dark' ? '☀️' : '🌙' }}
           </button>
-          <button class="icon-btn" data-test="hide-ui" title="Hide the panel" @click="uiHidden = true">
-            ⤧
-          </button>
           <button
             class="controls-toggle"
             data-test="controls-toggle"
@@ -404,11 +401,17 @@ function onDisasterClick(id: string) {
       </div>
     </aside>
 
-    <main class="map-pane">
-      <button v-if="uiHidden" class="show-ui" data-test="show-ui" title="Show the panel" @click="uiHidden = false">
-        ☰ Panel
-      </button>
+    <button
+      class="panel-toggle"
+      :class="{ collapsed: uiHidden }"
+      data-test="panel-toggle"
+      :title="uiHidden ? 'Show the panel' : 'Hide the panel'"
+      @click="uiHidden = !uiHidden"
+    >
+      {{ uiHidden ? '▶' : '◀' }}
+    </button>
 
+    <main class="map-pane">
       <MapView
         ref="mapViewRef"
         :draft-area="draftArea"
@@ -482,7 +485,7 @@ function onDisasterClick(id: string) {
 
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--body); }
-.app { display: flex; height: 100vh; }
+.app { display: flex; height: 100vh; position: relative; }
 .sidebar {
   width: 320px; padding: 16px; overflow-y: auto;
   background: var(--steel); color: var(--text); flex-shrink: 0;
@@ -499,11 +502,19 @@ body { margin: 0; font-family: var(--body); }
 
 .map-pane { flex: 1; position: relative; }
 .map { position: absolute; inset: 0; background: var(--ink); }
-.show-ui {
-  position: absolute; z-index: 1000; top: 12px; left: 12px;
-  background: var(--steel); border: 1px solid var(--line); color: var(--text);
-  box-shadow: 0 4px 14px rgba(4, 14, 22, 0.5);
+/* Arrow tab on the panel edge to hide/show the sidebar. */
+.panel-toggle {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  left: 320px; z-index: 1100;
+  width: 20px; height: 52px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--steel2); border: 1px solid var(--line); border-left: none;
+  border-radius: 0 7px 7px 0; color: var(--text); cursor: pointer;
+  box-shadow: 2px 0 10px rgba(4, 14, 22, 0.4);
+  transition: left 0.15s ease;
 }
+.panel-toggle:hover { border-color: var(--coord); }
+.panel-toggle.collapsed { left: 0; }
 .picker { display: flex; gap: 8px; align-items: end; margin-bottom: 12px; }
 .picker select { width: 100%; }
 .toolbar { display: flex; gap: 8px; margin: 12px 0; }
@@ -591,7 +602,7 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
 }
 .leaflet-tooltip.route-tooltip { font-family: var(--mono); color: var(--safe); font-weight: 500; }
 .leaflet-tooltip.disaster-label {
-  background: rgba(7, 21, 31, 0.82); color: var(--text);
+  background: rgba(7, 21, 31, 0.85); color: #E7EDF2;
   border: 1px solid var(--line); box-shadow: none; font-weight: 600; font-size: 0.8rem;
   cursor: pointer; pointer-events: auto;
 }
@@ -619,5 +630,6 @@ input:focus, select:focus { outline: none; border-color: var(--coord); }
   .sidebar-body { max-height: 48vh; overflow-y: auto; }
   .controls-toggle { display: inline-block; }
   .map-pane { flex: 1; }
+  .panel-toggle { display: none; }
 }
 </style>

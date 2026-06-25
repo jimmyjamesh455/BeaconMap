@@ -22,7 +22,7 @@ export const pointMeta: Record<CoordinationPointType, IconMeta> = {
 }
 
 export const disasterMeta: Record<DisasterType, IconMeta> = {
-  Earthquake: { emoji: '🫨', label: 'Earthquake' },
+  Earthquake: { emoji: '🌍', label: 'Earthquake' },
   Flood: { emoji: '💧', label: 'Flood' },
   Wildfire: { emoji: '🔥', label: 'Wildfire' },
   Storm: { emoji: '🌀', label: 'Storm' },

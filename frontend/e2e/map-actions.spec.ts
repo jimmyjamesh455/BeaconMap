@@ -79,9 +79,9 @@ test('can hide and reveal the panel', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('.sidebar')).toBeVisible()
 
-  await page.locator('[data-test=hide-ui]').click()
+  await page.locator('[data-test=panel-toggle]').click()
   await expect(page.locator('.sidebar')).toBeHidden()
 
-  await page.locator('[data-test=show-ui]').click()
+  await page.locator('[data-test=panel-toggle]').click()
   await expect(page.locator('.sidebar')).toBeVisible()
 })
