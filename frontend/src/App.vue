@@ -249,7 +249,10 @@ function onMarkerClick(point: LatLng) {
   <div class="app">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h1>BeaconMap</h1>
+        <div class="brand">
+          <img class="emblem" src="/beaconmap-emblem.svg" alt="" aria-hidden="true" />
+          <h1>Beacon<span class="accent">Map</span></h1>
+        </div>
         <button
           class="controls-toggle"
           data-test="controls-toggle"
@@ -352,116 +355,138 @@ function onMarkerClick(point: LatLng) {
 </template>
 
 <style>
+:root {
+  --ink: #07151F;        /* deepest ground / map canvas */
+  --ground: #0A1C2A;     /* page */
+  --steel: #0F2738;      /* panel / instrument face */
+  --steel2: #143049;     /* raised */
+  --line: #1E3D54;       /* hairline */
+  --line-soft: #163047;
+  --mute: #6E8799;       /* data / secondary */
+  --text: #D8E4EE;       /* primary on dark */
+  --dim: #9CB1C2;
+  --beacon: #F6A623;     /* the signal — primary action, used sparingly */
+  --beacon-hi: #FFCB5E;
+  --hazard: #E5484D;     /* hazards / danger radii */
+  --safe: #16B786;       /* safe routes */
+  --coord: #1FA9D6;      /* coordination, selection, focus, links */
+
+  --display: 'Space Grotesk', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; }
+body { margin: 0; font-family: var(--body); }
 .app { display: flex; height: 100vh; }
 .sidebar {
   width: 320px; padding: 16px; overflow-y: auto;
-  background: #0f172a; color: #e2e8f0; flex-shrink: 0;
+  background: var(--steel); color: var(--text); flex-shrink: 0;
+  border-right: 1px solid var(--line);
 }
-.sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.sidebar h1 { font-size: 1.2rem; margin: 0; }
+.sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.emblem { width: 26px; height: 30px; display: block; }
+.sidebar h1 { font-family: var(--display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.02em; margin: 0; }
+.accent { color: var(--beacon); }
 .controls-toggle { display: none; }
-button.danger { background: #7f1d1d; border-color: #b91c1c; }
-button.danger:hover { background: #b91c1c; }
+
 .map-pane { flex: 1; position: relative; }
-.map { position: absolute; inset: 0; }
+.map { position: absolute; inset: 0; background: var(--ink); }
 .picker { display: flex; gap: 8px; align-items: end; margin-bottom: 12px; }
 .picker select { width: 100%; }
 .toolbar { display: flex; gap: 8px; margin: 12px 0; }
+
 button {
-  background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+  background: var(--steel2); color: var(--text); border: 1px solid var(--line);
   padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  font-family: var(--body); font-size: 0.85rem;
 }
-button.active { background: #2563eb; border-color: #2563eb; }
+button:hover { border-color: var(--coord); }
+button.active { background: var(--beacon); border-color: var(--beacon); color: var(--ink); font-weight: 600; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
-.form, .route-panel { background: #1e293b; padding: 12px; border-radius: 8px; margin: 12px 0; }
-.form h3, .route-panel h3 { margin: 0 0 8px; font-size: 1rem; }
-label { display: block; font-size: 0.85rem; margin-bottom: 8px; }
-input, select { width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; }
+button.danger { background: transparent; border-color: var(--hazard); color: #fca5a5; }
+button.danger:hover { background: var(--hazard); color: #fff; }
+/* Primary action (form submit) carries the beacon. */
+.actions button[type="submit"] { background: var(--beacon); border-color: var(--beacon); color: var(--ink); font-weight: 600; }
+.actions button[type="submit"]:hover { background: var(--beacon-hi); border-color: var(--beacon-hi); }
+.actions button[type="submit"]:disabled { background: var(--steel2); color: var(--text); border-color: var(--line); }
+
+.form, .route-panel { background: var(--steel2); border: 1px solid var(--line); padding: 12px; border-radius: 8px; margin: 12px 0; }
+.form h3, .route-panel h3 { font-family: var(--display); font-weight: 600; margin: 0 0 8px; font-size: 1rem; }
+label { display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--dim); }
+input, select {
+  width: 100%; padding: 6px; margin-top: 2px; border-radius: 4px;
+  border: 1px solid var(--line); background: var(--ink); color: var(--text);
+}
+input:focus, select:focus { outline: none; border-color: var(--coord); }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
-.coords, .hint, .counts, .mode-hint { font-size: 0.8rem; color: #94a3b8; }
-.route-summary { color: #34d399; font-size: 0.85rem; }
-.error { color: #f87171; font-size: 0.85rem; }
+
+/* Data readouts speak in mono — the instrument's voice. */
+.coords, .counts, .mode-hint, .route-summary { font-family: var(--mono); }
+.coords, .counts, .mode-hint { font-size: 0.76rem; color: var(--mute); letter-spacing: 0.02em; }
+.hint { font-size: 0.8rem; color: var(--dim); }
+.route-summary { color: var(--safe); font-size: 0.8rem; }
+.error { color: var(--hazard); font-size: 0.85rem; }
 
 .banners { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
 .banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: #7f1d1d;
-  color: #fee2e2;
-  border: 1px solid #b91c1c;
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 0.8rem;
+  display: flex; align-items: flex-start; gap: 8px;
+  background: rgba(229, 72, 77, 0.14); color: #fecdd0;
+  border: 1px solid var(--hazard); border-radius: 6px;
+  padding: 8px 10px; font-size: 0.8rem;
 }
 .banner-dismiss {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: #fecaca;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0 4px;
-  cursor: pointer;
+  margin-left: auto; background: transparent; border: none; color: #fca5a5;
+  font-size: 1rem; line-height: 1; padding: 0 4px; cursor: pointer;
 }
 
 .context-menu {
-  position: absolute;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  min-width: 180px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
+  position: absolute; z-index: 1000; display: flex; flex-direction: column; min-width: 190px;
+  background: var(--steel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(4, 14, 22, 0.55); overflow: hidden;
 }
-.context-menu button {
-  border: none;
-  border-radius: 0;
-  text-align: left;
-  padding: 10px 12px;
-}
-.context-menu button:hover { background: #2563eb; }
-.context-menu .menu-cancel { color: #94a3b8; border-top: 1px solid #334155; }
-.context-menu .menu-cancel:hover { background: #334155; }
-
-/* Permanent disaster labels on the map. */
-.leaflet-tooltip.disaster-label {
-  background: rgba(15, 23, 42, 0.8);
-  color: #e2e8f0;
-  border: none;
-  box-shadow: none;
-  font-weight: 600;
-  font-size: 0.8rem;
-}
-.leaflet-tooltip.disaster-label::before { display: none; }
+.context-menu button { border: none; border-radius: 0; text-align: left; padding: 10px 12px; }
+.context-menu button:hover { background: var(--steel2); border-color: var(--steel2); }
+.context-menu .menu-cancel { color: var(--mute); border-top: 1px solid var(--line); }
+.context-menu .menu-cancel:hover { background: var(--steel2); }
 
 .services-btn { width: 100%; margin-bottom: 8px; }
 
-/* Map icon "chips": fixed on-screen size at every zoom, with a high-contrast circle. */
+/* Leaflet surfaces themed to the instrument. */
+.leaflet-container { background: var(--ink); font-family: var(--body); }
+.leaflet-control-attribution { background: rgba(7, 21, 31, 0.7) !important; color: var(--mute) !important; }
+.leaflet-control-attribution a { color: var(--dim) !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--steel); color: var(--text); }
+.leaflet-popup-content { font-family: var(--body); }
+.leaflet-tooltip {
+  background: var(--steel); color: var(--text);
+  border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(4, 14, 22, 0.5);
+}
+.leaflet-tooltip.route-tooltip { font-family: var(--mono); color: var(--safe); font-weight: 500; }
+.leaflet-tooltip.disaster-label {
+  background: rgba(7, 21, 31, 0.82); color: var(--text);
+  border: 1px solid var(--line); box-shadow: none; font-weight: 600; font-size: 0.8rem;
+}
+.leaflet-tooltip.disaster-label::before { display: none; }
+
+/* Map icon "chips": fixed on-screen size at every zoom; border ties each to the legend. */
 .leaflet-marker-icon.map-pin-icon { background: transparent; border: none; }
 .map-pin {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid #1e293b;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
-  line-height: 1;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--steel);
+  box-shadow: 0 1px 5px rgba(4, 14, 22, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; line-height: 1;
 }
+.hazard-div-icon .map-pin { border-color: var(--hazard); }
+.point-div-icon .map-pin { border-color: var(--coord); }
+.service-div-icon .map-pin { border-color: var(--beacon); }
 
 @media (max-width: 720px) {
   /* Phone: the map dominates; controls collapse to a compact, scrollable panel. */
   .app { flex-direction: column; }
-  .sidebar { width: 100%; max-height: 60vh; flex-shrink: 0; padding: 10px 12px; }
+  .sidebar { width: 100%; max-height: 60vh; flex-shrink: 0; padding: 10px 12px; border-right: none; border-bottom: 1px solid var(--line); }
   .sidebar-body { max-height: 48vh; overflow-y: auto; }
   .controls-toggle { display: inline-block; }
   .map-pane { flex: 1; }

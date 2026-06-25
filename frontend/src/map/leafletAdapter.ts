@@ -5,13 +5,12 @@ import type { MapAdapter } from './MapAdapter'
 import { formatRouteSummary } from '../format'
 import { disasterInfo, hazardInfo, pointInfo, serviceInfo } from '../icons'
 
-const HAZARD_COLOURS: Record<string, string> = {
-  BlockedRoad: '#b45309',
-  UnsafeRoute: '#b45309',
-  Fire: '#dc2626',
-  DamagedBuilding: '#7c3aed',
-  Other: '#475569',
-}
+// Brand palette (the map legend).
+const HAZARD = '#E5484D' // hazards / danger radii
+const SAFE = '#16B786'   // safe routes
+const COORD = '#1FA9D6'  // coordination / selection
+const BEACON = '#F6A623' // signal / draft outline
+const STEEL_MUTE = '#6E8799'
 
 // Emoji in a fixed-size circular chip. Being an HTML overlay, it stays the same on-screen size
 // at every zoom level (it is not scaled with the map like geographic shapes).
@@ -35,9 +34,11 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
     maxBoundsViscosity: 1,
   }).setView([20, 0], 2)
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
+  // Dark "instrument" basemap (brand: Ink canvas) from CARTO.
+  L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
     noWrap: true,
   }).addTo(map)
 
@@ -86,10 +87,10 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
         const polygon = L.polygon(
           d.area.map((p) => [p.lat, p.lng] as [number, number]),
           {
-            color: selected ? '#2563eb' : '#64748b',
+            color: selected ? COORD : STEEL_MUTE,
             weight: selected ? 4 : 3,
             opacity: selected ? 0.95 : 0.8,
-            fillOpacity: selected ? 0.15 : 0.07,
+            fillOpacity: selected ? 0.12 : 0.05,
             dashArray: selected ? undefined : '6 6',
             interactive: false,
           },
@@ -107,23 +108,25 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       if (ring.length === 0) return
       const latlngs = ring.map((p) => [p.lat, p.lng] as [number, number])
       if (ring.length >= 3) {
-        L.polygon(latlngs, { color: '#f59e0b', weight: 3, dashArray: '4 4', fillOpacity: 0.08, interactive: false })
+        L.polygon(latlngs, { color: BEACON, weight: 3, dashArray: '4 4', fillOpacity: 0.08, interactive: false })
           .addTo(draftLayer)
       }
       for (const p of latlngs) {
-        L.circleMarker(p, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, interactive: false })
+        L.circleMarker(p, { radius: 4, color: BEACON, fillColor: BEACON, fillOpacity: 1, interactive: false })
           .addTo(draftLayer)
       }
     },
     drawHazards(hazards: Hazard[]) {
       hazardLayer.clearLayers()
       for (const h of hazards) {
-        const colour = HAZARD_COLOURS[h.type] ?? HAZARD_COLOURS.Other
+        // Danger radius is always hazard-red (an avoid-zone); the icon conveys the kind.
         L.circle([h.lat, h.lng], {
           radius: h.radiusMeters,
-          color: colour,
-          weight: 3,
-          fillOpacity: 0.35,
+          color: HAZARD,
+          fillColor: HAZARD,
+          weight: 2,
+          opacity: 0.9,
+          fillOpacity: 0.2,
         }).addTo(hazardLayer)
         const meta = hazardInfo(h.type)
         L.marker([h.lat, h.lng], { icon: emojiIcon(meta.emoji, 'hazard-div-icon') })
@@ -151,7 +154,7 @@ export function createLeafletAdapter(element: HTMLElement): MapAdapter {
       routeLayer.clearLayers()
       if (!route || route.coordinates.length === 0) return
       L.polyline(route.coordinates.map((p) => [p.lat, p.lng] as [number, number]), {
-        color: '#059669',
+        color: SAFE,
         weight: 6,
         opacity: 0.9,
         className: 'route-line',

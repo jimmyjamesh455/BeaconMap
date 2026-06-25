@@ -118,3 +118,24 @@ Trade-offs: a cosmetic SRID mismatch between stored geometries (0) and routing g
 auto-initialise the native SQLite provider. Added `SQLitePCLRaw.bundle_e_sqlite3` to both the
 API and test projects; tests also call `SQLitePCL.Batteries_V2.Init()` before opening raw
 connections. The `dotnet-ef` global tool is pinned to 9.x to match the .NET 9 SDK.
+
+## D11 — BeaconMap brand applied to the app
+
+Applied the supplied BeaconMap brand identity to the frontend.
+
+What was decided:
+- **Palette = map legend** (one set for brand + UI): Ink `#07151F` ground/map canvas, Command
+  Steel `#0F2738` panels, Beacon Amber `#F6A623` primary action (sparingly), Hazard Red
+  `#E5484D` danger radii, Safe Green `#16B786` routes, Coordinate Cyan `#1FA9D6`
+  coordination/selection/focus.
+- **Type**: Space Grotesk (wordmark/headings), Inter (UI), JetBrains Mono (data readouts —
+  coords, counts, route summary), loaded from Google Fonts.
+- **Emblem + favicon** SVGs in `frontend/public`; sidebar shows the emblem + "Beacon**Map**"
+  wordmark (amber "Map").
+- **Dark basemap**: switched Leaflet tiles to CARTO `dark_all` to match the Ink canvas.
+- Map elements recoloured to the legend; hazard danger circle is uniformly Hazard Red (the
+  icon conveys the kind); icon chips carry a category-coloured border.
+
+Trade-offs: Google Fonts + CARTO tiles add runtime network dependencies (graceful fallbacks:
+system fonts; tiles still create DOM elements offline so e2e is unaffected). A single-ink mono
+emblem was supplied but isn't yet used in-app.
