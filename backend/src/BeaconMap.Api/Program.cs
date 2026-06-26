@@ -43,12 +43,25 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors();
 
+// Serve the compiled SPA (written into wwwroot by `vite build`) so this
+// .NET app is the single deployed runtime for both the API and the UI.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapDisasterEndpoints();
 app.MapHazardEndpoints();
 app.MapCoordinationPointEndpoints();
 app.MapRouteEndpoints();
 app.MapHub<MapHub>("/hubs/map");
+
+// SPA fallback: return index.html for client-side routes. Only enabled when the
+// frontend has actually been built, so test hosts without wwwroot are unaffected.
+var indexPath = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
+if (File.Exists(indexPath))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 
