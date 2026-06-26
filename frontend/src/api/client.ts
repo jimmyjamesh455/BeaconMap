@@ -11,8 +11,12 @@ import type {
 
 export type FetchFn = typeof fetch
 
+// In production the SPA is served from the same origin as the API, so the base
+// URL is empty and requests resolve to /api/... on the App Service host. In dev
+// it points at the local backend. VITE_API_BASE_URL overrides both when set.
 export const defaultBaseUrl: string =
-  (import.meta.env?.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5180'
+  (import.meta.env?.VITE_API_BASE_URL as string | undefined) ??
+  (import.meta.env?.PROD ? '' : 'http://localhost:5180')
 
 export function createApiClient(baseUrl: string = defaultBaseUrl, fetchFn: FetchFn = fetch) {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {

@@ -41,7 +41,10 @@ apt-get update && apt-get install -y libsqlite3-mod-spatialite && dotnet BeaconM
 | Secret | Value |
 |---|---|
 | `AZURE_CREDENTIALS` | The full service-principal JSON (provided separately — do not commit it) |
-| `VITE_API_BASE_URL` | `` (empty string) — the SPA is same-origin with the API in production |
+
+No `VITE_API_BASE_URL` secret is needed: the production build defaults to a
+same-origin API base URL (see `frontend/src/api/client.ts`). Set the secret only
+if you ever need to point the SPA at a different API host.
 
 The service principal is `github-beaconmap`, scoped Contributor on `beaconmap-rg`.
 To regenerate its credentials:

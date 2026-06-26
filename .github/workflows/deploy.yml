@@ -29,9 +29,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       # --- Frontend build ---
-      # Vite bakes VITE_* values into the JS bundle at build time. The app is
-      # served from the same origin as the API in production, so the API base
-      # URL is empty and requests resolve to /api/... on the App Service host.
+      # The production build defaults to a same-origin API base URL (see
+      # src/api/client.ts), so no build-time API URL secret is required.
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -42,8 +41,6 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: npm run build   # outputs into backend/src/BeaconMap.Api/wwwroot
 
       # --- Backend build, test, publish ---
