@@ -1,0 +1,97 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: beaconmap          # Azure App Service name
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # --- Frontend build ---
+      # Vite bakes VITE_* values into the JS bundle at build time. The app is
+      # served from the same origin as the API in production, so the API base
+      # URL is empty and requests resolve to /api/... on the App Service host.
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: npm run build   # outputs into backend/src/BeaconMap.Api/wwwroot
+
+      # --- Backend build, test, publish ---
+      # The frontend build above has already populated wwwroot, so it is included
+      # in the published artifact below.
+      - name: Restore backend
+        run: dotnet restore BeaconMap.sln
+
+      - name: Build backend
+        run: dotnet build BeaconMap.sln --configuration Release --no-restore
+
+      # NetTopologySuite loads the SpatiaLite native extension when the SQLite
+      # connection opens, so the test host needs mod_spatialite present.
+      - name: Install SpatiaLite
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-mod-spatialite
+
+      - name: Run backend tests
+        # Unit + integration only. Playwright e2e needs a running app and is excluded.
+        run: dotnet test backend/tests/BeaconMap.Api.Tests/BeaconMap.Api.Tests.csproj --configuration Release --no-build
+
+      - name: Publish backend
+        run: dotnet publish backend/src/BeaconMap.Api/BeaconMap.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beaconmap-publish
+          path: ./publish
+          retention-days: 7
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: production   # enables GitHub environment protection rules
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: beaconmap-publish
+          path: ./publish
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: ./publish

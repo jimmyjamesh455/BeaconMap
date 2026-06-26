@@ -11,6 +11,9 @@ node_modules/
 dist/
 *.local
 
+# SPA build output emitted into the backend web root by `vite build`
+backend/src/BeaconMap.Api/wwwroot/
+
 # Playwright
 test-results/
 playwright-report/
