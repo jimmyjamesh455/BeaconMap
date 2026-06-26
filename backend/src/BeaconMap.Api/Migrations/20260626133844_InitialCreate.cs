@@ -1,6 +1,5 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using NetTopologySuite.Geometries;
 
 #nullable disable
 
@@ -12,17 +11,6 @@ namespace BeaconMap.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Initialise SpatiaLite's spatial metadata. We emit InitSpatialMetaDataFull()
-            // rather than relying on EF's "Sqlite:InitSpatialMetaData" annotation (which emits
-            // the basic InitSpatialMetaData()): on SpatiaLite 5.1 — what ships on the Linux CI
-            // runner and the App Service image — the basic init does not create the
-            // spatialite_history table that AddGeometryColumn's triggers write to, which crashes
-            // geometry-column creation. The Full variant creates the complete metadata set.
-            // The first argument (transaction = 0) tells SpatiaLite NOT to open its own
-            // transaction: EF already runs the migration inside one, and some 5.1 builds
-            // otherwise try to BEGIN a nested transaction and fail with "SQL logic error".
-            migrationBuilder.Sql("SELECT InitSpatialMetaDataFull(0);");
-
             migrationBuilder.CreateTable(
                 name: "Disasters",
                 columns: table => new
@@ -30,7 +18,7 @@ namespace BeaconMap.Api.Migrations
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Area = table.Column<Polygon>(type: "POLYGON", nullable: false),
+                    Area = table.Column<byte[]>(type: "BLOB", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
@@ -47,7 +35,7 @@ namespace BeaconMap.Api.Migrations
                     DisasterId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Location = table.Column<Point>(type: "POINT", nullable: false),
+                    Location = table.Column<byte[]>(type: "BLOB", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
@@ -69,7 +57,7 @@ namespace BeaconMap.Api.Migrations
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     DisasterId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Location = table.Column<Point>(type: "POINT", nullable: false),
+                    Location = table.Column<byte[]>(type: "BLOB", nullable: false),
                     RadiusMeters = table.Column<double>(type: "REAL", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)

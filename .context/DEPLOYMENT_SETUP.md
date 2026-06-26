@@ -21,17 +21,14 @@ serving both `/api/*` and the SPA.
 > (Always On, no daily CPU cap), request a quota increase, then
 > `az appservice plan update --name beaconmap-plan-ukwest -g beaconmap-rg --sku B1`.
 
-### SpatiaLite startup command
+### Geometry storage (no SpatiaLite)
 
-The DB uses NetTopologySuite over SQLite, which loads the `mod_spatialite` native extension when
-a connection opens. The Linux App Service image does not ship it, so the app's startup command
-installs it before launching:
-
-```
-apt-get update && apt-get install -y libsqlite3-mod-spatialite && dotnet BeaconMap.Api.dll
-```
-
-(Set via `az webapp config set --startup-file ...`. CI installs the same package before tests.)
+The DB stores NetTopologySuite geometries (Point/Polygon) as **WKB blobs** via EF Core value
+converters (see `AppDbContext`), and performs no in-database spatial queries — all spatial logic
+runs in C#. So the app does **not** depend on SpatiaLite/`mod_spatialite`, which is fragile on
+Linux (the bundled `e_sqlite3` engine cannot register SpatiaLite 5.1's `VirtualSpatialIndex`
+module). No native extension, startup command, or CI package is needed, and the App Service
+startup command is left at the platform default.
 
 ## GitHub repository secrets (add manually)
 

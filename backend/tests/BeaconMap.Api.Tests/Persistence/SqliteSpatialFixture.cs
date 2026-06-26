@@ -30,16 +30,13 @@ public sealed class SqliteSpatialFixture : IDisposable
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
         using var ctx = CreateContext();
-        // Apply the migration (rather than EnsureCreated) so the schema is built through the
-        // same InitSpatialMetaDataFull() path the app uses; EnsureCreated would emit the basic
-        // InitSpatialMetaData() that breaks geometry-column creation on SpatiaLite 5.1.
         ctx.Database.Migrate();
     }
 
     public AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(_connection, x => x.UseNetTopologySuite())
+            .UseSqlite(_connection)
             .Options;
         return new AppDbContext(options);
     }

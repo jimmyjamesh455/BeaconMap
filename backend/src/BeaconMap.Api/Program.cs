@@ -12,7 +12,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? "Data Source=beaconmap.db";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(connectionString, x => x.UseNetTopologySuite()));
+    options.UseSqlite(connectionString));
 
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));

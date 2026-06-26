@@ -52,11 +52,6 @@ jobs:
       - name: Build backend
         run: dotnet build BeaconMap.sln --configuration Release --no-restore
 
-      # NetTopologySuite loads the SpatiaLite native extension when the SQLite
-      # connection opens, so the test host needs mod_spatialite present.
-      - name: Install SpatiaLite
-        run: sudo apt-get update && sudo apt-get install -y libsqlite3-mod-spatialite
-
       - name: Run backend tests
         # Unit + integration only. Playwright e2e needs a running app and is excluded.
         run: dotnet test backend/tests/BeaconMap.Api.Tests/BeaconMap.Api.Tests.csproj --configuration Release --no-build

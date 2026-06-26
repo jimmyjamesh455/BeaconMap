@@ -52,7 +52,7 @@ public class TestApiFactory : WebApplicationFactory<Program>
             }
 
             services.AddDbContext<AppDbContext>(o =>
-                o.UseSqlite(_connection, x => x.UseNetTopologySuite()));
+                o.UseSqlite(_connection));
 
             if (RouteProviderOverride is not null)
             {
