@@ -12,8 +12,13 @@ namespace BeaconMap.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterDatabase()
-                .Annotation("Sqlite:InitSpatialMetaData", true);
+            // Initialise SpatiaLite's spatial metadata. We emit InitSpatialMetaDataFull()
+            // rather than relying on EF's "Sqlite:InitSpatialMetaData" annotation (which emits
+            // the basic InitSpatialMetaData()): on SpatiaLite 5.1 — what ships on the Linux CI
+            // runner and the App Service image — the basic init does not create the
+            // spatialite_history table that AddGeometryColumn's triggers write to, which crashes
+            // geometry-column creation. The Full variant creates the complete metadata set.
+            migrationBuilder.Sql("SELECT InitSpatialMetaDataFull();");
 
             migrationBuilder.CreateTable(
                 name: "Disasters",
